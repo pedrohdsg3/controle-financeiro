@@ -1,6 +1,8 @@
 import { db, newId } from './db';
 import { defaultCards, defaultCategories, defaultPeople, PALETTE } from './defaults';
-import type { Card, Category, Installment, Person, SalaryChange, Transaction } from './types';
+import type { Card, Category, Installment, Person, Recurring, SalaryChange, Settlement, Transaction } from './types';
+import type { Cents } from '../lib/money';
+import type { Month } from '../lib/months';
 
 /** Na primeira vez que o app abre, cria cartões, categorias e pessoas padrão. */
 export async function ensureDefaults() {
@@ -76,3 +78,21 @@ export async function saveSalary(s: Omit<SalaryChange, 'id'> & { id?: string }) 
   await db.salaries.put({ ...s, id: s.id ?? newId() });
 }
 export const deleteSalary = (id: string) => db.salaries.delete(id);
+
+export async function saveRecurring(r: Omit<Recurring, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) {
+  const full: Recurring = { ...r, id: r.id ?? newId(), createdAt: r.createdAt ?? Date.now() };
+  await db.recurring.put(full);
+  return full;
+}
+export const deleteRecurring = (id: string) => db.recurring.delete(id);
+
+export async function saveSettlement(s: Omit<Settlement, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) {
+  await db.settlements.put({ ...s, id: s.id ?? newId(), createdAt: s.createdAt ?? Date.now() });
+}
+export const deleteSettlement = (id: string) => db.settlements.delete(id);
+
+/** Define quanto foi guardado no mês (0 apaga). */
+export async function setSaving(month: Month, amount: Cents) {
+  if (amount) await db.savings.put({ month, amount });
+  else await db.savings.delete(month);
+}

@@ -5,26 +5,12 @@ import { suggestBillMonth } from '../engine/engine';
 import { fmt, parseMoney, splitInstallments } from '../lib/money';
 import { addMonths, monthLabel, monthOf, todayISO, type ISODate, type Month } from '../lib/months';
 import { Sheet, useData } from './common';
+import { InlineAdd } from './pickers';
 
 const LAST_CARD = 'qa:lastCard';
 const LAST_KIND = 'qa:lastKind';
 const safeGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const safeSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* sem armazenamento */ } };
-
-/** Chip "+ Novo" que vira um campo de texto para criar cartão/categoria/pessoa na hora. */
-function InlineAdd({ label, onAdd }: { label: string; onAdd: (name: string) => Promise<void> }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  if (!open) return <button type="button" className="chip add" onClick={() => setOpen(true)}>+ {label}</button>;
-  const submit = async () => { if (name.trim()) await onAdd(name.trim()); setOpen(false); setName(''); };
-  return (
-    <span className="row" style={{ width: '100%' }}>
-      <input className="input grow" autoFocus placeholder={`Nome do ${label.toLowerCase()}`} value={name}
-        onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), submit())} />
-      <button type="button" className="btn small" onClick={submit}>OK</button>
-    </span>
-  );
-}
 
 export interface QuickAddProps {
   date?: ISODate;

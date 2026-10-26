@@ -8,6 +8,8 @@ import { makeBackup, parseBackup } from '../backup';
 import { fmt, parseMoney } from '../lib/money';
 import { currentMonth, monthLabel, todayISO } from '../lib/months';
 import { useData } from './common';
+import { InstallmentsScreen } from './InstallmentsScreen';
+import { RecurringScreen } from './RecurringScreen';
 
 export type Theme = 'auto' | 'light' | 'dark';
 
@@ -37,7 +39,7 @@ function AddRow({ placeholder, onAdd }: { placeholder: string; onAdd: (v: string
 
 const removedMsg = (r: string) => r === 'archived' && alert('Já existe lançamento usando este item, então ele foi arquivado: some das listas, mas o histórico continua certo.');
 
-function download(name: string, content: string, type: string) {
+function download(name: string, content: BlobPart, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement('a');
   a.href = url; a.download = name; a.click();
@@ -63,6 +65,17 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
   const [salMonth, setSalMonth] = useState(currentMonth());
   const [salValue, setSalValue] = useState('');
   const [msg, setMsg] = useState('');
+  const [page, setPage] = useState<'installments' | 'recurring' | null>(null);
+
+  if (page) {
+    return (
+      <>
+        <button className="btn small secondary" style={{ marginBottom: 12 }} onClick={() => setPage(null)}>‹ Voltar</button>
+        <h2 style={{ margin: '0 0 12px' }}>{page === 'installments' ? '📆 Parcelamentos' : '🔁 Fixos e assinaturas'}</h2>
+        {page === 'installments' ? <InstallmentsScreen /> : <RecurringScreen />}
+      </>
+    );
+  }
 
   async function restore(d: Dataset, what: string) {
     const n = (await db.transactions.count()) + (await db.installments.count());
@@ -74,6 +87,19 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
 
   return (
     <>
+      <div className="card" style={{ padding: '4px 14px' }}>
+        <div className="list">
+          <button className="item" onClick={() => setPage('installments')}>
+            <span className="avatar" style={{ background: 'var(--accent-soft)' }}>📆</span>
+            <span className="grow"><strong>Parcelamentos</strong><br /><span className="small muted">{data.installments.length} compras · parcelas por mês</span></span><span className="muted">›</span>
+          </button>
+          <button className="item" onClick={() => setPage('recurring')}>
+            <span className="avatar" style={{ background: 'var(--accent-soft)' }}>🔁</span>
+            <span className="grow"><strong>Fixos e assinaturas</strong><br /><span className="small muted">{data.recurring.length} cadastrados · boletos, contas, streaming</span></span><span className="muted">›</span>
+          </button>
+        </div>
+      </div>
+
       <div className="hint">Tudo fica guardado só neste aparelho. Faça backup de vez em quando em <strong>Backup</strong>.</div>
 
       <Section title="🎨 Aparência">
@@ -171,6 +197,11 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
           </button>
           <p className="small muted">Guarde esse arquivo no Drive ou mande para você mesmo. Serve para trocar de celular.</p>
           <button className="btn secondary" onClick={async () => {
+            const { exportExcel } = await import('../export/toExcel');
+            download(`financas-${todayISO()}.xlsx`, exportExcel(await loadDataset()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          }}>📗 Exportar para Excel (.xlsx)</button>
+          <p className="small muted">Planilha só para consulta (lançamentos, parcelas, fixos, histórico e terceiros). Para restaurar, use o backup JSON.</p>
+          <button className="btn secondary" onClick={async () => {
             const f = await pickFile('application/json,.json');
             if (!f) return;
             try { await restore(parseBackup(await f.text()), 'Backup'); } catch (e) { setMsg(`❌ ${(e as Error).message}`); }
@@ -191,7 +222,7 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
         {msg && <p className="small" style={{ whiteSpace: 'pre-line' }}>{msg}</p>}
       </Section>
 
-      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v0.1 · Parcelamentos, Fixos, Terceiros e Histórico completos chegam nas próximas etapas.</p>
+      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.0</p>
     </>
   );
 }

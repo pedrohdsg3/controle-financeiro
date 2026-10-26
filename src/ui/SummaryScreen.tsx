@@ -5,6 +5,7 @@ import { reserveUntil, summarizeMonth, type Line } from '../engine/engine';
 import { fmt } from '../lib/money';
 import { monthLabel, type Month } from '../lib/months';
 import { Avatar, MonthPicker, Sheet, useData, useLookups } from './common';
+import { SavingSheet } from './HistoryScreen';
 
 interface Drill { title: string; lines: Line[]; field: 'amount' | 'mine' | 'others' }
 
@@ -13,6 +14,7 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
   const { card, category, personName } = useLookups(data);
   const s = useMemo(() => summarizeMonth(data, month), [data, month]);
   const [drill, setDrill] = useState<Drill | null>(null);
+  const [savingOpen, setSavingOpen] = useState(false);
 
   const goal = data.goals[0];
   const reserve = reserveUntil(data, month);
@@ -86,7 +88,7 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
         {flow('Total gastos (faturas)', s.totalBills, { onClick: () => setDrill({ title: 'Todas as faturas e contas', lines: s.lines.filter((l) => l.source !== 'pix'), field: 'amount' }) })}
         {flow('A receber de terceiros', s.toReceive, { sign: '-', sub: true, onClick: () => setDrill({ title: 'Parte de terceiros', lines: s.lines.filter((l) => l.source !== 'pix' && l.amount !== l.mine), field: 'others' }) })}
         {flow('Total gastos (meu)', s.totalMine, { cls: 'total', onClick: () => setDrill({ title: 'Meus gastos', lines: s.lines.filter((l) => l.source !== 'pix' && l.mine), field: 'mine' }) })}
-        {flow('Guardado / poupança', s.saved, { sign: '-' })}
+        {flow('Guardado / poupança', s.saved, { sign: '-', onClick: () => setSavingOpen(true) })}
         {flow('Gastos no Pix', s.pixMine, { sign: '-', onClick: pixLines.length ? () => setDrill({ title: 'Gastos no Pix', lines: pixLines, field: 'mine' }) : undefined })}
         {flow('Enviei para terceiros', s.sentToOthers, { sign: '-' })}
         {flow('Saldo do mês (livre)', s.freeBalance, { cls: `total ${s.freeBalance < 0 ? 'neg' : 'pos'}` })}
@@ -148,9 +150,9 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
               </div>
             ))}
           </div>
-          <p className="small muted" style={{ marginBottom: 0 }}>A tela completa de Terceiros chega na próxima etapa.</p>
         </div>
       )}
+      {savingOpen && <SavingSheet month={month} onClose={() => setSavingOpen(false)} />}
 
       {drill && (
         <Sheet title={drill.title} onClose={() => setDrill(null)}>

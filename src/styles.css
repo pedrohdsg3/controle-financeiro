@@ -150,3 +150,12 @@ button { cursor: pointer; }
 .legend i { width: 9px; height: 9px; border-radius: 3px; display: block; }
 .empty-state { text-align: center; padding: 24px 8px; color: var(--muted); }
 .empty-state .ico { font-size: 34px; }
+
+/* Tabela do histórico */
+.table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.table th, .table td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+.table th:first-child, .table td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+.table th { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+.table tr.now td { background: var(--accent-soft); }
+.table tr.future td { color: var(--muted); }
+.table tr.future td.pos, .table tr.future td.neg { opacity: 0.75; }

@@ -7,6 +7,8 @@ import { DataProvider, useDataset } from './ui/common';
 import { MoreScreen, type Theme } from './ui/MoreScreen';
 import { QuickAdd } from './ui/QuickAdd';
 import { SummaryScreen } from './ui/SummaryScreen';
+import { PeopleScreen } from './ui/PeopleScreen';
+import { HistoryScreen } from './ui/HistoryScreen';
 
 type Tab = 'calendar' | 'summary' | 'people' | 'history' | 'more';
 const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
@@ -18,16 +20,6 @@ const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
 ];
 
 const loadTheme = (): Theme => { try { return (localStorage.getItem('theme') as Theme) || 'auto'; } catch { return 'auto'; } };
-
-function Soon({ what, phase }: { what: string; phase: string }) {
-  return (
-    <div className="card empty-state">
-      <div className="ico">🚧</div>
-      <p><strong>{what}</strong> chega na {phase}.</p>
-      <p className="small">Os cálculos já existem — o Resumo já mostra quanto cada pessoa te deve.</p>
-    </div>
-  );
-}
 
 export default function App() {
   const data = useDataset();
@@ -55,8 +47,8 @@ export default function App() {
             onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />
         )}
         {tab === 'summary' && <SummaryScreen month={month} setMonth={setMonth} />}
-        {tab === 'people' && <Soon what="A tela de Terceiros (quem me deve / quem eu devo)" phase="Etapa 3" />}
-        {tab === 'history' && <Soon what="O Histórico anual com gráficos e projeções" phase="Etapa 5" />}
+        {tab === 'people' && <PeopleScreen month={month} setMonth={setMonth} />}
+        {tab === 'history' && <HistoryScreen />}
         {tab === 'more' && <MoreScreen theme={theme} setTheme={setTheme} />}
       </div>
 
