@@ -28,13 +28,25 @@ export default function App() {
   const [month, setMonth] = useState(currentMonth());
   const [adding, setAdding] = useState<{ date?: ISODate; editing?: Transaction } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDark = theme === 'dark' || (theme === 'auto' && systemDark);
 
   useEffect(() => { ensureDefaults(); }, []);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   useEffect(() => {
     if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem('theme', theme); } catch { /* sem armazenamento */ }
   }, [theme]);
+  useEffect(() => {
+    // Barra de status do celular acompanha o tema.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#161616' : '#f4f5f8');
+  }, [isDark]);
 
   if (!data) return <Loading />;
 
@@ -42,7 +54,13 @@ export default function App() {
   return (
     <DataProvider data={data}>
       <div className="app">
-        <header className="topbar"><h1>{current.title}</h1></header>
+        <header className="topbar">
+          <h1>{current.title}</h1>
+          <button className="theme-toggle" onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'} title={isDark ? 'Tema claro' : 'Tema escuro'}>
+            {isDark ? '☀️' : '🌙'}
+          </button>
+        </header>
         {tab === 'calendar' && (
           <CalendarScreen month={month} setMonth={setMonth} onAdd={(date) => setAdding({ date })}
             onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />

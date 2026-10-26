@@ -102,7 +102,7 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
 
       <div className="hint">Tudo fica guardado só neste aparelho. Faça backup de vez em quando em <strong>Backup</strong>.</div>
 
-      <Section title="🎨 Aparência">
+      <Section title="🎨 Aparência" hint="“Automático” segue o tema do celular. Você também pode alternar a qualquer momento pelo botão ☀️/🌙 no topo da tela.">
         <div className="seg" style={{ marginBottom: 0 }}>
           {(['auto', 'light', 'dark'] as Theme[]).map((t) => (
             <button key={t} className={theme === t ? 'on' : ''} onClick={() => setTheme(t)}>
