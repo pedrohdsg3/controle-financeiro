@@ -1,0 +1,8 @@
+node_modules
+dist
+dev-dist
+*.local
+# Seus dados pessoais nunca vão para o código nem para o Git
+dados/
+.claude/
+*.tsbuildinfo
