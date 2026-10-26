@@ -9,6 +9,7 @@ import { QuickAdd } from './ui/QuickAdd';
 import { SummaryScreen } from './ui/SummaryScreen';
 import { PeopleScreen } from './ui/PeopleScreen';
 import { HistoryScreen } from './ui/HistoryScreen';
+import { Loading } from './ui/Guards';
 
 type Tab = 'calendar' | 'summary' | 'people' | 'history' | 'more';
 const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
@@ -35,7 +36,7 @@ export default function App() {
     try { localStorage.setItem('theme', theme); } catch { /* sem armazenamento */ }
   }, [theme]);
 
-  if (!data) return <div className="app"><p className="muted" style={{ paddingTop: 40, textAlign: 'center' }}>Carregando…</p></div>;
+  if (!data) return <Loading />;
 
   const current = TABS.find((t) => t.id === tab)!;
   return (

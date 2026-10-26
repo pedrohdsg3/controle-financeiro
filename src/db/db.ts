@@ -37,6 +37,14 @@ export class FinDB extends Dexie {
 
 export const db = new FinDB();
 
+// Se uma versão mais nova do app (em outra aba/janela) precisar atualizar o banco,
+// esta fecha a conexão e recarrega, em vez de travar as duas.
+db.on('versionchange', () => {
+  db.close();
+  if (typeof window !== 'undefined') window.location.reload();
+  return false;
+});
+
 export const TABLES = [
   'cards', 'categories', 'people', 'transactions', 'installments',
   'recurring', 'salaries', 'settlements', 'savings', 'goals',
