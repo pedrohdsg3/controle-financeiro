@@ -1,3 +1,4 @@
+import { Check, Clock } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { addReceipt, deleteReceipt, deleteSettlement, saveSettlement } from '../db/actions';
 import type { Settlement } from '../db/types';
@@ -46,7 +47,7 @@ function SettlementForm({ month, initial, onClose }: { month: Month; initial: Pa
         </div>
       </div>
       <label className="toggle">
-        <span>{initial.direction === 'paysMe' ? '✅ Já recebi este valor' : '✅ Já enviei este valor'}</span>
+        <span>{initial.direction === 'paysMe' ? 'Já recebi este valor' : 'Já enviei este valor'}</span>
         <input type="checkbox" checked={done} onChange={(e) => setDone(e.target.checked)} />
       </label>
       {err && <p className="neg small">{err}</p>}
@@ -135,10 +136,10 @@ export function PeopleScreen({ month, setMonth }: { month: Month; setMonth: (m: 
       </div>
 
       {unassigned && unassigned.spent > 0 && (
-        <div className="card warn small">⚠️ {fmt(unassigned.spent)} de gastos divididos estão sem “quem paga o resto”. Corrija em Mais → Revisar lançamentos.</div>
+        <div className="card warn small">{fmt(unassigned.spent)} de gastos divididos estão sem “quem paga o resto”. Corrija em Mais → Revisar lançamentos.</div>
       )}
 
-      {ledger.length === 0 && <div className="card empty-state"><div className="ico">🤝</div><p>Nenhuma movimentação com terceiros neste mês.</p></div>}
+      {ledger.length === 0 && <div className="card empty-state"><div className="ico"></div><p>Nenhuma movimentação com terceiros neste mês.</p></div>}
 
       {ledger.filter((p) => p.personId !== UNASSIGNED).map((p) => {
         const settled = p.open === 0 && p.toReceive === 0 && p.toSend === 0;
@@ -147,22 +148,23 @@ export function PeopleScreen({ month, setMonth }: { month: Month; setMonth: (m: 
             <div className="between">
               <span className="person-head">{personName(p.personId)}</span>
               {settled
-                ? <span className="badge state-ok">✅ Quitado</span>
+                ? <span className="badge state-ok"><Check size={12} aria-hidden /> Quitado</span>
                 : <span className={`num person-head ${p.open < 0 ? 'neg' : ''}`}>{p.open < 0 ? `eu devo ${fmt(-p.open)}` : `me deve ${fmt(p.open)}`}</span>}
             </div>
             <div style={{ marginTop: 6 }}>
-              {Object.entries(p.byCard).map(([cid, v]) => row(`💳 ${cid === 'none' ? 'Sem cartão' : card(cid)?.name ?? '?'}`, v))}
-              {row('🔁 Assinaturas e fixos', p.recurring)}
-              {row('⚡ Pix', p.pix)}
-              {row('✅ Já me pagou', p.paid, 'pos')}
+              {Object.entries(p.byCard).map(([cid, v]) => row(`${cid === 'none' ? 'Sem cartão' : card(cid)?.name ?? '?'}`, v))}
+              {row('Assinaturas e fixos', p.recurring)}
+              {row('Pix', p.pix)}
+              {row('Já me pagou', p.paid, 'pos')}
             </div>
             {p.settlements.map((x) => (
               <div key={x.id} className="chip-row small">
                 <button style={{ background: 'none', border: 0, padding: 0, textAlign: 'left' }} onClick={() => setForm(x)}>
+                  {x.doneAt ? <Check size={13} aria-hidden style={{ verticalAlign: '-0.15em', marginRight: 4 }} /> : <Clock size={13} aria-hidden style={{ verticalAlign: '-0.15em', marginRight: 4 }} />}
                   {x.doneAt
-                    ? `✅ ${x.direction === 'paysMe' ? 'Recebi por fora' : 'Enviei'} ${shortDateBR(x.doneAt)}: ${fmt(x.amount)}`
-                    : `⏳ ${DIR_LABEL[x.direction]}: ${fmt(x.amount)}`}
-                  {x.note ? ` · ${x.note}` : ''} ✏️
+                    ? `${x.direction === 'paysMe' ? 'Recebi por fora' : 'Enviei'} ${shortDateBR(x.doneAt)}: ${fmt(x.amount)}`
+                    : `${DIR_LABEL[x.direction]}: ${fmt(x.amount)}`}
+                  {x.note ? ` · ${x.note}` : ''} 
                 </button>
                 {!x.doneAt && <button className="btn small secondary" style={{ flex: 'none' }} onClick={() => confirmSettlement(x)}>{x.direction === 'paysMe' ? 'Recebi' : 'Enviei'}</button>}
               </div>

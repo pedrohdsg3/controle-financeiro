@@ -5,6 +5,7 @@ import { suggestBillMonth } from '../engine/engine';
 import { fmt, parseMoney, splitInstallments } from '../lib/money';
 import { addMonths, monthLabel, monthOf, todayISO, type ISODate, type Month } from '../lib/months';
 import { Sheet, useData } from './common';
+import { Glyph } from './icons';
 import { InlineAdd } from './pickers';
 
 const LAST_CARD = 'qa:lastCard';
@@ -100,7 +101,7 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
       <div className="seg">
         {(['card', 'pix', 'income'] as TxKind[]).map((k) => (
           <button key={k} className={kind === k ? 'on' : ''} onClick={() => { setKind(k); setMonthOverride(null); }}>
-            {k === 'card' ? '💳 Cartão' : k === 'pix' ? '⚡ Pix' : '💰 Receita'}
+            <Glyph e={k === 'card' ? '💳' : k === 'pix' ? '⚡' : '💰'} /> {k === 'card' ? 'Cartão' : k === 'pix' ? 'Pix' : 'Receita'}
           </button>
         ))}
       </div>
@@ -119,7 +120,7 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
           <div className="chips">
             {categories.map((c) => (
               <button key={c.id} type="button" className={`chip ${categoryId === c.id ? 'on' : ''}`} onClick={() => setCategoryId(c.id)}>
-                {c.icon} {c.name}
+                <Glyph e={c.icon} /> {c.name}
               </button>
             ))}
             <InlineAdd label="Categoria" onAdd={async (n) => setCategoryId((await addCategory(n)).id)} />
@@ -179,7 +180,7 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
             <div className="field">
               <span className="label">Quem usou</span>
               <div className="chips">
-                <button type="button" className={`chip ${usedBy === ME ? 'on' : ''}`} onClick={() => setUsedBy(ME)}>🙋 Eu</button>
+                <button type="button" className={`chip ${usedBy === ME ? 'on' : ''}`} onClick={() => setUsedBy(ME)}><Glyph e="🙋" /> Eu</button>
                 {people.map((p) => (
                   <button key={p.id} type="button" className={`chip ${usedBy === p.id ? 'on' : ''}`} onClick={() => setUsedBy(p.id)}>{p.name}</button>
                 ))}
@@ -190,7 +191,7 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
           )}
 
           <label className="toggle">
-            <span>➗ Dividir com alguém</span>
+            <span className="row"><Glyph e="➗" /> Dividir com alguém</span>
             <input type="checkbox" checked={splitOn} onChange={(e) => setSplitOn(e.target.checked)} />
           </label>
           {splitOn && (
@@ -221,7 +222,7 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
           {kind === 'card' && !editing && (
             <>
               <label className="toggle">
-                <span>📆 Compra parcelada</span>
+                <span className="row"><Glyph e="📆" /> Compra parcelada</span>
                 <input type="checkbox" checked={installOn} onChange={(e) => setInstallOn(e.target.checked)} />
               </label>
               {installOn && (

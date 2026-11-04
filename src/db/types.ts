@@ -4,10 +4,16 @@ import type { ISODate, Month } from '../lib/months';
 /** Id especial da pessoa "Eu" (não fica na tabela de pessoas). */
 export const ME = 'me';
 
+export type CardFinish = 'color' | 'carbon' | 'black' | 'metal';
+
 export interface Card {
   id: string;
   name: string;
   color: string;
+  /** Aparência do cartão na tela. */
+  finish?: CardFinish;
+  /** Nome do produto mostrado no cartão (ex: Carbon Black). */
+  product?: string;
   /** Compras feitas a partir deste dia caem na fatura do mês seguinte. */
   closingDay?: number;
   /** Dia do vencimento da fatura (a fatura do mês M vence no dia dueDay de M). */

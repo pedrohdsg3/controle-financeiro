@@ -1,10 +1,11 @@
+import { CalendarDays, ChartPie, CreditCard, Menu, Moon, Plus, Sun, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ensureDefaults } from './db/actions';
 import type { Transaction } from './db/types';
 import { dueAlerts } from './engine/bills';
 import { currentMonth, todayISO, type ISODate } from './lib/months';
 import { notificationPermission, registerBackgroundCheck, syncDueSchedule } from './lib/notify';
-import { CardsScreen, DueBanner } from './ui/CardsScreen';
+import { CardsScreen } from './ui/CardsScreen';
 import { CalendarScreen } from './ui/CalendarScreen';
 import { DarkContext, DataProvider, useDataset } from './ui/common';
 import { MoreScreen, type Theme } from './ui/MoreScreen';
@@ -13,15 +14,15 @@ import { SummaryScreen } from './ui/SummaryScreen';
 import { PeopleScreen } from './ui/PeopleScreen';
 import { HistoryScreen } from './ui/HistoryScreen';
 import { Loading } from './ui/Guards';
-import { BackupReminder, UpdateBar } from './ui/Notices';
+import { HomeStrip, UpdateBar } from './ui/Notices';
 
 type Tab = 'calendar' | 'accounts' | 'summary' | 'history' | 'more';
-const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
-  { id: 'calendar', icon: '📅', label: 'Calendário', title: 'Calendário' },
-  { id: 'accounts', icon: '💳', label: 'Contas', title: 'Contas' },
-  { id: 'summary', icon: '📊', label: 'Resumo', title: 'Resumo do mês' },
-  { id: 'history', icon: '📈', label: 'Histórico', title: 'Histórico' },
-  { id: 'more', icon: '☰', label: 'Mais', title: 'Mais' },
+const TABS: { id: Tab; icon: LucideIcon; label: string; title: string }[] = [
+  { id: 'calendar', icon: CalendarDays, label: 'Calendário', title: 'Calendário' },
+  { id: 'accounts', icon: CreditCard, label: 'Contas', title: 'Contas' },
+  { id: 'summary', icon: ChartPie, label: 'Resumo', title: 'Resumo do mês' },
+  { id: 'history', icon: TrendingUp, label: 'Histórico', title: 'Histórico' },
+  { id: 'more', icon: Menu, label: 'Mais', title: 'Mais' },
 ];
 
 const loadTheme = (): Theme => { try { return (localStorage.getItem('theme') as Theme) || 'auto'; } catch { return 'auto'; } };
@@ -30,6 +31,7 @@ export default function App() {
   const data = useDataset();
   const [tab, setTab] = useState<Tab>('calendar');
   const [accountsView, setAccountsView] = useState<'cards' | 'people'>('cards');
+  const [focusCard, setFocusCard] = useState<string | undefined>();
   const [month, setMonth] = useState(currentMonth());
   const [adding, setAdding] = useState<{ date?: ISODate; editing?: Transaction } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
@@ -69,14 +71,13 @@ export default function App() {
           <h1>{current.title}</h1>
           <button className="theme-toggle" onClick={() => setTheme(isDark ? 'light' : 'dark')}
             aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'} title={isDark ? 'Tema claro' : 'Tema escuro'}>
-            {isDark ? '☀️' : '🌙'}
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </header>
         <UpdateBar />
         {tab === 'calendar' && (
           <>
-            <BackupReminder />
-            <DueBanner alerts={alerts} onOpen={(m) => { setMonth(m); setAccountsView('cards'); setTab('accounts'); }} />
+            <HomeStrip alerts={alerts} onOpen={(m, cardId) => { setMonth(m); setFocusCard(cardId); setAccountsView('cards'); setTab('accounts'); }} />
             <CalendarScreen month={month} setMonth={setMonth} onAdd={(date) => setAdding({ date })}
               onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />
           </>
@@ -84,11 +85,11 @@ export default function App() {
         {tab === 'accounts' && (
           <>
             <div className="seg">
-              <button className={accountsView === 'cards' ? 'on' : ''} onClick={() => setAccountsView('cards')}>💳 Cartões</button>
-              <button className={accountsView === 'people' ? 'on' : ''} onClick={() => setAccountsView('people')}>👥 Pessoas</button>
+              <button className={accountsView === 'cards' ? 'on' : ''} onClick={() => setAccountsView('cards')}><CreditCard size={15} /> Cartões</button>
+              <button className={accountsView === 'people' ? 'on' : ''} onClick={() => setAccountsView('people')}><Users size={15} /> Pessoas</button>
             </div>
             {accountsView === 'cards'
-              ? <CardsScreen month={month} setMonth={setMonth} goToPeople={() => setAccountsView('people')} />
+              ? <CardsScreen month={month} setMonth={setMonth} goToPeople={() => setAccountsView('people')} focusCard={focusCard} />
               : <PeopleScreen month={month} setMonth={setMonth} />}
           </>
         )}
@@ -97,12 +98,12 @@ export default function App() {
         {tab === 'more' && <MoreScreen theme={theme} setTheme={setTheme} onEditTx={(t) => setAdding({ editing: t })} />}
       </div>
 
-      <button className="fab" aria-label="Lançar gasto ou receita" onClick={() => setAdding({})}>+</button>
+      <button className="fab" aria-label="Lançar gasto ou receita" onClick={() => setAdding({})}><Plus size={28} /></button>
       <nav className="tabbar">
         <div className="tabbar-inner">
           {TABS.map((t) => (
             <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
-              <span className="ico">{t.icon}</span>{t.label}
+              <t.icon className="ico" size={22} strokeWidth={tab === t.id ? 2.4 : 1.8} aria-hidden />{t.label}
               {t.id === 'accounts' && alerts.length > 0 && <span className="count">{alerts.length}</span>}
             </button>
           ))}

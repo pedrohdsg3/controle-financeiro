@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { chartColor } from '../db/defaults';
 import { loadDataset } from '../db/db';
 import { ME, type Dataset } from '../db/types';
+import { fmt, type Cents } from '../lib/money';
 import { addMonths, monthLabelLong, type Month } from '../lib/months';
 
 /** Todos os dados do app, sempre atualizados (relê o banco a cada mudança). */
@@ -65,6 +66,13 @@ export function Sheet({ title, onClose, children }: { title?: string; onClose: (
   );
 }
 
-export function Avatar({ icon, color }: { icon: string; color?: string }) {
-  return <div className="avatar" style={{ background: (color ?? '#94a3b8') + '26' }}>{icon}</div>;
+/** Valor com hierarquia: "R$" e centavos menores que os reais. */
+export function Money({ value, className = '' }: { value: Cents; className?: string }) {
+  const negative = value < 0;
+  const [whole, cents] = fmt(Math.abs(value)).replace(/^R\$\s*/, '').split(',');
+  return (
+    <span className={`money num ${className}`}>
+      {negative && '−'}<span className="money-cur">R$</span>{whole}<span className="money-cents">,{cents}</span>
+    </span>
+  );
 }

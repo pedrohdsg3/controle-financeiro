@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
@@ -11,6 +12,7 @@ import { daysSinceBackup, exportBackup, KEY_LAST_BACKUP, KEY_RESTORE_SNAPSHOT, r
 import { fmt, parseMoney } from '../lib/money';
 import { currentMonth, monthLabel, todayISO } from '../lib/months';
 import { useData } from './common';
+import { Avatar } from './icons';
 import { InstallmentsScreen } from './InstallmentsScreen';
 import { RecurringScreen } from './RecurringScreen';
 import { KEY_REVIEW_DISMISSED, ReviewScreen } from './ReviewScreen';
@@ -82,7 +84,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
     return (
       <>
         <button className="btn small secondary" style={{ marginBottom: 12 }} onClick={() => setPage(null)}>‹ Voltar</button>
-        <h2 style={{ margin: '0 0 12px' }}>{page === 'installments' ? '📆 Parcelamentos' : page === 'recurring' ? '🔁 Fixos e assinaturas' : '🔎 Revisar lançamentos'}</h2>
+        <h2 style={{ margin: '0 0 12px' }}>{page === 'installments' ? 'Parcelamentos' : page === 'recurring' ? 'Fixos e assinaturas' : '🔎 Revisar lançamentos'}</h2>
         {page === 'installments' && <InstallmentsScreen />}
         {page === 'recurring' && <RecurringScreen />}
         {page === 'review' && <ReviewScreen onEditTx={onEditTx} />}
@@ -94,7 +96,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
     const n = (await db.transactions.count()) + (await db.installments.count());
     if (n > 0 && !confirm(`Isto SUBSTITUI todos os dados atuais (${n} lançamentos/parcelamentos) pelos do arquivo. Continuar?`)) return;
     await restoreWithSnapshot(d);
-    setMsg(`✅ ${what} carregado: ${d.transactions.length} lançamentos, ${d.installments.length} parcelamentos, ${d.recurring.length} fixos.`);
+    setMsg(`${what} carregado: ${d.transactions.length} lançamentos, ${d.installments.length} parcelamentos, ${d.recurring.length} fixos.`);
   }
 
   return (
@@ -102,15 +104,15 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
       <div className="card" style={{ padding: '4px 14px' }}>
         <div className="list">
           <button className="item" onClick={() => setPage('installments')}>
-            <span className="avatar" style={{ background: 'var(--accent-soft)' }}>📆</span>
+            <Avatar icon="📆" color="var(--accent)" />
             <span className="grow"><strong>Parcelamentos</strong><br /><span className="small muted">{data.installments.length} {data.installments.length === 1 ? 'compra' : 'compras'} · parcelas por mês</span></span><span className="muted">›</span>
           </button>
           <button className="item" onClick={() => setPage('recurring')}>
-            <span className="avatar" style={{ background: 'var(--accent-soft)' }}>🔁</span>
+            <Avatar icon="🔁" color="var(--accent)" />
             <span className="grow"><strong>Fixos e assinaturas</strong><br /><span className="small muted">{data.recurring.length} cadastrados · boletos, contas, streaming</span></span><span className="muted">›</span>
           </button>
           <button className="item" onClick={() => setPage('review')}>
-            <span className="avatar" style={{ background: 'var(--accent-soft)' }}>🔎</span>
+            <Avatar icon="🔎" color="var(--accent)" />
             <span className="grow"><strong>Revisar lançamentos</strong><br /><span className="small muted">{issueCount ? `${issueCount} para conferir` : 'Nada suspeito'}</span></span><span className="muted">›</span>
           </button>
         </div>
@@ -120,7 +122,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         Tudo fica guardado só neste aparelho. {backupDays === null ? 'Nenhum backup registrado ainda.' : backupDays === 0 ? 'Último backup: hoje.' : `Último backup: há ${backupDays} dia(s).`}
       </div>
 
-      <Section title="🎨 Aparência" hint="“Automático” segue o tema do celular. Você também pode alternar a qualquer momento pelo botão ☀️/🌙 no topo da tela.">
+      <Section title="Aparência" hint="“Automático” segue o tema do celular. Você também pode alternar a qualquer momento pelo botão no topo da tela.">
         <div className="seg" style={{ marginBottom: 0 }}>
           {(['auto', 'light', 'dark'] as Theme[]).map((t) => (
             <button key={t} className={theme === t ? 'on' : ''} onClick={() => setTheme(t)}>
@@ -130,7 +132,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         </div>
       </Section>
 
-      <Section title="💳 Cartões" hint="O dia de fechamento serve para o app sugerir em qual fatura cada compra cai.">
+      <Section title="Cartões" hint="O dia de fechamento serve para o app sugerir em qual fatura cada compra cai.">
         <div className="list">
           {cards.map((c) => (
             <div key={c.id} className="item">
@@ -140,46 +142,46 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
                 <input className="input" style={{ width: 58, padding: '8px 6px', textAlign: 'center' }} inputMode="numeric" value={c.closingDay ?? ''}
                   onChange={(e) => db.cards.update(c.id, { closingDay: Number(e.target.value) || undefined })} aria-label="Dia de fechamento" />
               </label>
-              <button className="icon-btn" aria-label="Remover" onClick={async () => confirm(`Remover ${c.name}?`) && removedMsg(await removeCard(c.id))}>🗑️</button>
+              <button className="icon-btn" aria-label="Remover" onClick={async () => confirm(`Remover ${c.name}?`) && removedMsg(await removeCard(c.id))}><Trash2 size={17} /></button>
             </div>
           ))}
         </div>
         <AddRow placeholder="Novo cartão (ex: Inter)" onAdd={(n) => addCard(n)} />
       </Section>
 
-      <Section title="🏷️ Categorias">
+      <Section title="Categorias">
         <div className="list">
           {categories.map((c) => (
             <div key={c.id} className="item">
               <input className="input" style={{ width: 52, textAlign: 'center', padding: '8px 4px' }} value={c.icon} onChange={(e) => db.categories.update(c.id, { icon: e.target.value })} aria-label="Ícone" />
               <input className="input grow" value={c.name} onChange={(e) => db.categories.update(c.id, { name: e.target.value })} aria-label="Nome da categoria" />
               <input type="color" value={c.color} onChange={(e) => db.categories.update(c.id, { color: e.target.value })} style={{ width: 32, height: 32, border: 0, background: 'none', padding: 0 }} aria-label="Cor" />
-              <button className="icon-btn" aria-label="Remover" onClick={async () => confirm(`Remover ${c.name}?`) && removedMsg(await removeCategory(c.id))}>🗑️</button>
+              <button className="icon-btn" aria-label="Remover" onClick={async () => confirm(`Remover ${c.name}?`) && removedMsg(await removeCategory(c.id))}><Trash2 size={17} /></button>
             </div>
           ))}
         </div>
         <AddRow placeholder="Nova categoria (ex: Educação)" onAdd={(n) => addCategory(n)} />
       </Section>
 
-      <Section title="👥 Pessoas que usam meus cartões">
+      <Section title="Pessoas que usam meus cartões">
         <div className="list">
           {people.map((p) => (
             <div key={p.id} className="item">
               <input className="input grow" value={p.name} onChange={(e) => db.people.update(p.id, { name: e.target.value })} aria-label="Nome" />
-              <button className="icon-btn" aria-label="Remover" onClick={async () => confirm(`Remover ${p.name}?`) && removedMsg(await removePerson(p.id))}>🗑️</button>
+              <button className="icon-btn" aria-label="Remover" onClick={async () => confirm(`Remover ${p.name}?`) && removedMsg(await removePerson(p.id))}><Trash2 size={17} /></button>
             </div>
           ))}
         </div>
         <AddRow placeholder="Nova pessoa" onAdd={(n) => addPerson(n)} />
       </Section>
 
-      <Section title="💼 Salário por mês" hint="O salário vale a partir do mês indicado até a próxima mudança. Receitas pontuais (13º, bônus, honorários) você lança pelo botão + como “Receita”.">
+      <Section title="Salário por mês" hint="O salário vale a partir do mês indicado até a próxima mudança. Receitas pontuais (13º, bônus, honorários) você lança pelo botão + como “Receita”.">
         <div className="list">
           {salaries.map((s) => (
             <div key={s.id} className="item">
               <span className="grow">A partir de <strong>{monthLabel(s.fromMonth)}</strong></span>
               <span className="num">{fmt(s.amount)}</span>
-              <button className="icon-btn" aria-label="Remover" onClick={() => confirm('Remover esta mudança de salário?') && deleteSalary(s.id)}>🗑️</button>
+              <button className="icon-btn" aria-label="Remover" onClick={() => confirm('Remover esta mudança de salário?') && deleteSalary(s.id)}><Trash2 size={17} /></button>
             </div>
           ))}
         </div>
@@ -196,7 +198,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         </div>
       </Section>
 
-      <Section title="🎯 Meta de viagem">
+      <Section title="Meta de viagem">
         <div className="field">
           <label>Destino</label>
           <input className="input" value={goal?.destination ?? ''} onChange={(e) => db.goals.put({ id: 'main', target: goal?.target ?? 0, destination: e.target.value })} />
@@ -208,35 +210,35 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         </div>
       </Section>
 
-      <Section title="💾 Backup e importação" defaultOpen={data.transactions.length === 0}>
+      <Section title="Backup e importação" defaultOpen={data.transactions.length === 0}>
         <div className="list">
           <button className="btn" onClick={async () => {
             try {
               const r = await exportBackup();
-              if (r !== 'cancelled') setMsg(r === 'shared' ? '✅ Backup enviado.' : '✅ Backup baixado. Guarde o arquivo fora do celular.');
-            } catch (e) { setMsg(`❌ Não consegui exportar: ${(e as Error).message}`); }
-          }}>⬇️ Fazer backup</button>
+              if (r !== 'cancelled') setMsg(r === 'shared' ? 'Backup enviado.' : 'Backup baixado. Guarde o arquivo fora do celular.');
+            } catch (e) { setMsg(`Não consegui exportar: ${(e as Error).message}`); }
+          }}>Fazer backup</button>
           <p className="small muted">
             Abre o menu de compartilhar: escolha o Drive. Serve para trocar de celular.
-            {persisted === false && ' ⚠️ O navegador ainda não garantiu estes dados contra limpeza automática, então o backup é ainda mais importante.'}
+            {persisted === false && ' O navegador ainda não garantiu estes dados contra limpeza automática, então o backup é ainda mais importante.'}
           </p>
           <button className="btn secondary" onClick={async () => {
             const { exportExcel } = await import('../export/toExcel');
             download(`financas-${todayISO()}.xlsx`, exportExcel(await loadDataset()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-          }}>📗 Exportar para Excel (.xlsx)</button>
+          }}>Exportar para Excel (.xlsx)</button>
           <p className="small muted">Planilha só para consulta (lançamentos, parcelas, fixos, histórico e terceiros). Para restaurar, use o backup.</p>
           <button className="btn secondary" onClick={async () => {
             const f = await pickFile('application/json,text/plain,.json,.txt');
             if (!f) return;
-            try { await restore(parseBackup(await f.text()), 'Backup'); } catch (e) { setMsg(`❌ ${(e as Error).message}`); }
-          }}>⬆️ Restaurar backup</button>
+            try { await restore(parseBackup(await f.text()), 'Backup'); } catch (e) { setMsg(`${(e as Error).message}`); }
+          }}>Restaurar backup</button>
           {snapshot && (
             <>
               <div style={{ height: 8 }} />
               <button className="btn secondary" onClick={async () => {
                 if (!confirm('Voltar para os dados de antes da última restauração?')) return;
-                setMsg(await undoRestore() ? '✅ Restauração desfeita.' : '❌ Não há o que desfazer.');
-              }}>↩️ Desfazer a última restauração ({(snapshot.value as { at: string }).at.split('-').reverse().join('/')})</button>
+                setMsg(await undoRestore() ? 'Restauração desfeita.' : 'Não há o que desfazer.');
+              }}>Desfazer a última restauração ({(snapshot.value as { at: string }).at.split('-').reverse().join('/')})</button>
             </>
           )}
           <div style={{ height: 8 }} />
@@ -248,14 +250,14 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
               const { importSpreadsheet } = await import('../import/fromSpreadsheet');
               const r = importSpreadsheet(new Uint8Array(await f.arrayBuffer()));
               await restore(r.data, 'Planilha');
-              if (r.warnings.length) setMsg((m) => `${m}\n⚠️ ${r.warnings.join('\n⚠️ ')}`);
-            } catch (e) { setMsg(`❌ Não consegui ler a planilha: ${(e as Error).message}`); }
-          }}>📊 Importar da planilha antiga (.xlsx)</button>
+              if (r.warnings.length) setMsg((m) => `${m}\n${r.warnings.join('\n')}`);
+            } catch (e) { setMsg(`Não consegui ler a planilha: ${(e as Error).message}`); }
+          }}>Importar da planilha antiga (.xlsx)</button>
         </div>
         {msg && <p className="small" style={{ whiteSpace: 'pre-line' }}>{msg}</p>}
       </Section>
 
-      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.3</p>
+      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.4</p>
     </>
   );
 }

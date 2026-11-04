@@ -6,6 +6,7 @@ import { fmt, parseMoney } from '../lib/money';
 import { addMonths, currentMonth, monthLabel, monthLabelShort, type Month } from '../lib/months';
 import { ME } from '../db/types';
 import { Sheet, useData, useLookups } from './common';
+import { Glyph } from './icons';
 import { CardChips, CategoryChips, centsToText, SplitEditor } from './pickers';
 
 const TYPES: RecurringType[] = ['Assinatura', 'Conta', 'Boleto', 'Fixo/Mensal'];
@@ -80,7 +81,7 @@ function RecurringForm({ initial, onClose }: { initial?: Recurring; onClose: () 
         </div>
         <p className="small muted" style={{ margin: 0 }}>Ex: academia trancada em janeiro.</p>
       </div>
-      <label className="toggle"><span>➗ Dividir (alguém paga parte ou tudo)</span><input type="checkbox" checked={splitOn} onChange={(e) => setSplitOn(e.target.checked)} /></label>
+      <label className="toggle"><span>Dividir (alguém paga parte ou tudo)</span><input type="checkbox" checked={splitOn} onChange={(e) => setSplitOn(e.target.checked)} /></label>
       {splitOn && <SplitEditor total={amount} myShareText={myShareText} setMyShareText={setMyShareText} restPerson={restPerson} setRestPerson={setRestPerson} totalLabel="Cobrança" />}
       {err && <p className="neg small">{err}</p>}
       <div className="row" style={{ marginTop: 8 }}>
@@ -113,9 +114,9 @@ export function RecurringScreen() {
       <button key={r.id} className="item" onClick={() => setEditing(r)} style={{ opacity: skipNow ? 0.6 : 1 }}>
         <div className="avatar" style={{ background: (cat?.color ?? '#94a3b8') + '26', fontSize: 13, fontWeight: 700 }}>{r.dueDay}</div>
         <div className="grow">
-          <div className="between"><span className="ellipsis">{cat?.icon} {r.description}</span><strong className="num">{fmt(r.amount)}</strong></div>
+          <div className="between"><span className="ellipsis row" style={{ gap: 6 }}><Glyph e={cat?.icon} color={cat?.color} /> {r.description}</span><strong className="num">{fmt(r.amount)}</strong></div>
           <div className="small muted ellipsis">
-            {r.cardId ? `💳 ${card(r.cardId)?.name}` : r.payMethod} · {r.type}
+            {r.cardId ? `${card(r.cardId)?.name}` : r.payMethod} · {r.type}
             {r.split && ` · ${personName(r.split.restPersonId)} paga ${fmt(r.amount - mine)}`}
             {skipNow && ' · não cobra este mês'}
             {r.endMonth && ` · até ${monthLabelShort(r.endMonth)}`}

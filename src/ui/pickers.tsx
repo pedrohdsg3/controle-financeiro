@@ -3,7 +3,8 @@ import { addCard, addCategory, addPerson } from '../db/actions';
 import { ME } from '../db/types';
 import type { Line } from '../engine/engine';
 import { fmt, parseMoney, type Cents } from '../lib/money';
-import { Avatar, useData, useLookups } from './common';
+import { Avatar, Glyph } from './icons';
+import { useData, useLookups } from './common';
 
 export const centsToText = (c?: Cents) => (c === undefined ? '' : (c / 100).toFixed(2).replace('.', ','));
 
@@ -26,7 +27,7 @@ export function PersonChips({ value, onChange, withMe = false, allowAdd = true }
   const people = useData().people.filter((p) => !p.archived || p.id === value).sort((a, b) => a.order - b.order);
   return (
     <div className="chips">
-      {withMe && <button type="button" className={`chip ${value === ME ? 'on' : ''}`} onClick={() => onChange(ME)}>🙋 Eu</button>}
+      {withMe && <button type="button" className={`chip ${value === ME ? 'on' : ''}`} onClick={() => onChange(ME)}><Glyph e="🙋" /> Eu</button>}
       {people.map((p) => (
         <button key={p.id} type="button" className={`chip ${value === p.id ? 'on' : ''}`} onClick={() => onChange(p.id)}>{p.name}</button>
       ))}
@@ -55,7 +56,7 @@ export function CategoryChips({ value, onChange }: { value?: string; onChange: (
   return (
     <div className="chips">
       {cats.map((c) => (
-        <button key={c.id} type="button" className={`chip ${value === c.id ? 'on' : ''}`} onClick={() => onChange(c.id)}>{c.icon} {c.name}</button>
+        <button key={c.id} type="button" className={`chip ${value === c.id ? 'on' : ''}`} onClick={() => onChange(c.id)}><Glyph e={c.icon} /> {c.name}</button>
       ))}
       <InlineAdd label="Categoria" onAdd={async (n) => onChange((await addCategory(n)).id)} />
     </div>

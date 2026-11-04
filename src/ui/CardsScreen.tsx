@@ -1,15 +1,19 @@
-import { useMemo, useState } from 'react';
-import { addCardPayment, deleteCardPayment, setCardDueDay } from '../db/actions';
-import type { Card } from '../db/types';
+import { CalendarPlus, Pencil } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { addCardPayment, deleteCardPayment, setCardDetails } from '../db/actions';
+import type { Card, CardFinish } from '../db/types';
 import {
-  ALERT_DAYS, calendarLink, dueAlerts, dueLabel, monthBills, type Bill, type OpenBill,
+  ALERT_DAYS, calendarLink, daysBetween, dueAlerts, dueDateOf, monthBills, type Bill,
 } from '../engine/bills';
 import { fmt, parseMoney, type Cents } from '../lib/money';
 import { monthLabel, todayISO, type ISODate, type Month } from '../lib/months';
 import {
   enableNotifications, notificationPermission, notificationsSupported, registerBackgroundCheck, showTestNotification,
 } from '../lib/notify';
-import { MonthPicker, Sheet, useData, useLookups } from './common';
+import { cardFinish, cardProduct, FINISHES } from '../lib/cardStyle';
+import { CardWallet } from './CardWallet';
+import { Money, MonthPicker, Sheet, useData, useLookups } from './common';
+import { DueStrip } from './Notices';
 import { centsToText, LineRow } from './pickers';
 
 const shortDate = (d: ISODate) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
@@ -48,56 +52,52 @@ export function PaySheet({ form, onClose }: { form: PayForm; onClose: () => void
 
 function DueSheet({ card, onClose }: { card: Card; onClose: () => void }) {
   const [text, setText] = useState(card.dueDay ? String(card.dueDay) : '');
+  const [closing, setClosing] = useState(card.closingDay ? String(card.closingDay) : '');
+  const [product, setProduct] = useState(cardProduct(card));
+  const [finish, setFinish] = useState<CardFinish>(cardFinish(card));
   const [err, setErr] = useState('');
   const link = calendarLink(card, todayISO());
   const save = async () => {
-    const day = Number(text);
-    if (text && (!Number.isInteger(day) || day < 1 || day > 31)) return setErr('Digite um dia entre 1 e 31.');
-    await setCardDueDay(card, text ? day : undefined);
+    const valid = (t: string) => !t || (Number.isInteger(Number(t)) && Number(t) >= 1 && Number(t) <= 31);
+    if (!valid(text) || !valid(closing)) return setErr('Digite um dia entre 1 e 31.');
+    await setCardDetails(card, { dueDay: text ? Number(text) : undefined, closingDay: closing ? Number(closing) : undefined, product: product.trim(), finish });
     onClose();
   };
   return (
-    <Sheet title={`Vencimento do ${card.name}`} onClose={onClose}>
-      <div className="field">
-        <label>Dia do vencimento</label>
-        <input className="input" inputMode="numeric" autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="Ex: 15" />
+    <Sheet title={card.name} onClose={onClose}>
+      <div className="row">
+        <div className="field grow">
+          <label>Vence dia</label>
+          <input className="input" inputMode="numeric" value={text} onChange={(e) => setText(e.target.value)} placeholder="Ex: 15" />
+        </div>
+        <div className="field grow">
+          <label>Fecha dia</label>
+          <input className="input" inputMode="numeric" value={closing} onChange={(e) => setClosing(e.target.value)} placeholder="Ex: 8" />
+        </div>
       </div>
-      <p className="small muted" style={{ marginTop: -6 }}>A fatura de cada mês vence neste dia. Os avisos começam {ALERT_DAYS} dias antes.</p>
+      <p className="small muted" style={{ marginTop: -6 }}>Os avisos começam {ALERT_DAYS} dias antes do vencimento.</p>
+      <div className="field">
+        <label>Nome no cartão</label>
+        <input className="input" value={product} onChange={(e) => setProduct(e.target.value)} placeholder="Ex: Carbon Black, Ultravioleta, Platinum" />
+      </div>
+      <div className="field">
+        <span className="label">Aparência</span>
+        <div className="chips">
+          {FINISHES.map((f) => <button key={f.id} type="button" className={`chip ${finish === f.id ? 'on' : ''}`} onClick={() => setFinish(f.id)}>{f.label}</button>)}
+        </div>
+      </div>
       {err && <p className="neg small">{err}</p>}
       <button className="btn" onClick={save}>Salvar</button>
       {link && (
         <>
           <div style={{ height: 8 }} />
           <a className="btn secondary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }} href={link} target="_blank" rel="noreferrer">
-            📅 Criar lembrete mensal na agenda do Google
+            <CalendarPlus size={16} style={{ verticalAlign: '-0.2em' }} aria-hidden /> Criar lembrete mensal na agenda do Google
           </a>
           <p className="small muted" style={{ marginBottom: 0 }}>É o jeito mais garantido de o celular avisar. Só o nome do cartão vai para a agenda.</p>
         </>
       )}
     </Sheet>
-  );
-}
-
-function DueChip({ bill }: { bill: Bill }) {
-  if (bill.total > 0 && bill.remaining === 0) return <span className="badge state-ok">✅ Paga</span>;
-  if (bill.days === null) return null;
-  if (bill.days < 0) return <span className="badge state-bad">⚠️ {dueLabel(bill.days)}</span>;
-  if (bill.days <= ALERT_DAYS) return <span className="badge state-warn">⏰ {dueLabel(bill.days)}</span>;
-  return <span className="badge">vence {shortDate(bill.dueDate!)}</span>;
-}
-
-/** Aviso de faturas vencidas ou perto de vencer; aparece na tela inicial e na aba Cartões. */
-export function DueBanner({ alerts, onOpen }: { alerts: OpenBill[]; onOpen: (month: Month) => void }) {
-  if (!alerts.length) return null;
-  return (
-    <div className="card due-banner">
-      {alerts.slice(0, 4).map((a) => (
-        <button key={a.cardId + a.month} className="between" onClick={() => onOpen(a.month)}>
-          <span className="ellipsis">{a.days < 0 ? '⚠️' : '⏰'} <strong>{a.cardName}</strong> {dueLabel(a.days)}</span>
-          <span className="num">{fmt(a.remaining)} ›</span>
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -111,7 +111,7 @@ function NotificationsCard() {
   }
   return (
     <div className="card">
-      <h2>🔔 Notificações</h2>
+      <h2>Notificações</h2>
       {permission !== 'granted' && (
         <>
           <p className="small muted" style={{ marginTop: 0 }}>Avisa no celular quando faltar até {ALERT_DAYS} dias para uma fatura vencer.</p>
@@ -124,8 +124,8 @@ function NotificationsCard() {
         <>
           <p className="small" style={{ marginTop: 0 }}>
             {background === false
-              ? '⚠️ Notificações ligadas, mas o Chrome não liberou a checagem com o app fechado. Use o lembrete na agenda.'
-              : '✅ Notificações ligadas.'}
+              ? 'Notificações ligadas, mas o Chrome não liberou a checagem com o app fechado. Use o lembrete na agenda.'
+              : 'Notificações ligadas.'}
           </p>
           <p className="small muted">Com o app fechado, quem decide o horário é o Android e pode atrasar ou não acontecer. Para um aviso garantido, crie também o lembrete na agenda (no vencimento de cada cartão).</p>
           <div className="row">
@@ -138,30 +138,76 @@ function NotificationsCard() {
   );
 }
 
-export function CardsScreen({ month, setMonth, goToPeople }: { month: Month; setMonth: (m: Month) => void; goToPeople: () => void }) {
+export function CardsScreen({ month, setMonth, goToPeople, focusCard }: { month: Month; setMonth: (m: Month) => void; goToPeople: () => void; focusCard?: string }) {
   const data = useData();
   const { card } = useLookups(data);
   const today = todayISO();
   const { bills, totals } = useMemo(() => monthBills(data, month, today), [data, month, today]);
   const alerts = useMemo(() => dueAlerts(data, today), [data, today]);
-  const noDueCards = data.cards.filter((c) => !c.archived && !c.dueDay);
   const [form, setForm] = useState<PayForm | null>(null);
   const [dueCard, setDueCard] = useState<Card | null>(null);
   const [items, setItems] = useState<Bill | null>(null);
 
-  const payBill = (b: Bill) => setForm({
-    title: `Pagamento: ${card(b.cardId)?.name} · ${monthLabel(month)}`,
+  // Todos os cartões na carteira: primeiro os que têm fatura no mês.
+  const wallet = useMemo(() => {
+    const list = data.cards.filter((c) => !c.archived || bills.some((b) => b.cardId === c.id)).sort((a, b) => a.order - b.order).map((c) => {
+      const due = dueDateOf(c, month);
+      const bill: Bill = bills.find((b) => b.cardId === c.id) ?? {
+        cardId: c.id, month, total: 0, mine: 0, paid: 0, remaining: 0, dueDate: due, days: due ? daysBetween(today, due) : null, payments: [], people: [], lines: [],
+      };
+      return { card: c, bill };
+    });
+    return [...list.filter((x) => x.bill.total > 0), ...list.filter((x) => x.bill.total <= 0)];
+  }, [data.cards, bills, month, today]);
+
+  const [activeId, setActiveId] = useState<string | undefined>(focusCard ?? alerts.find((a) => a.month === month)?.cardId);
+  useEffect(() => { if (focusCard) setActiveId(focusCard); }, [focusCard]);
+  const found = wallet.findIndex((x) => x.card.id === activeId);
+  const active = found >= 0 ? found : 0;
+  const current = wallet[active];
+  const b = current?.bill;
+  const info = current?.card;
+
+  const payBill = (bill: Bill) => setForm({
+    title: `Pagamento: ${card(bill.cardId)?.name} · ${monthLabel(month)}`,
     hint: 'Registre quanto você pagou desta fatura. Pode ser parcial. Isso é só controle: não muda seus gastos nem o saldo.',
-    suggested: b.remaining,
-    onSave: (amount, date, note) => addCardPayment({ cardId: b.cardId, month, amount, date, note }),
+    suggested: bill.remaining,
+    onSave: (amount, date, note) => addCardPayment({ cardId: bill.cardId, month, amount, date, note }),
   });
+
   return (
     <>
       <MonthPicker month={month} onChange={setMonth} />
-      <DueBanner alerts={alerts} onOpen={setMonth} />
+      <DueStrip alerts={alerts} onOpen={(m, id) => { setMonth(m); setActiveId(id); }} />
+
+      {wallet.length > 0 && <CardWallet items={wallet} active={active} onActive={(i) => setActiveId(wallet[i].card.id)} />}
+      {wallet.length > 0 && <p className="small muted" style={{ textAlign: 'center', margin: '2px 0 12px' }}>Deslize para trocar · toque para virar</p>}
+
+      {b && info && (
+        <div className="card">
+          <div className="between small"><span className="muted">Paguei</span><span className="muted">Falta</span></div>
+          <div className="between"><Money value={b.paid} className="money-md" /><Money value={b.remaining} className="money-md" /></div>
+          <div className="bar" style={{ margin: '8px 0' }}><div style={{ width: `${b.total ? Math.min(100, (b.paid / b.total) * 100) : 0}%` }} /></div>
+          {b.payments.map((p) => (
+            <button key={p.id} className="badge entry" onClick={() => confirm(`Apagar o pagamento de ${fmt(p.amount)}?`) && deleteCardPayment(p.id)}>
+              {shortDate(p.date)} · {fmt(p.amount)}{p.note ? ` · ${p.note}` : ''} ✕
+            </button>
+          ))}
+          <div className="chips" style={{ marginTop: 10 }}>
+            {b.remaining > 0 && <button className="btn small" onClick={() => payBill(b)}>Registrar pagamento</button>}
+            {b.lines.length > 0 && <button className="btn small secondary" onClick={() => setItems(b)}>Ver itens</button>}
+            <button className="btn small secondary" onClick={() => setDueCard(info)}><Pencil size={14} aria-hidden /> Cartão</button>
+          </div>
+          {b.people.length > 0 && (
+            <button className="between small muted" style={{ width: '100%', background: 'none', border: 0, borderTop: '1px solid var(--border)', marginTop: 12, padding: '8px 0 0' }} onClick={goToPeople}>
+              <span>Meu {fmt(b.mine)}</span><span>Terceiros {fmt(b.total - b.mine)} ›</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="card">
-        <h2>Faturas de {monthLabel(month)}</h2>
+        <h2>Todas as faturas de {monthLabel(month)}</h2>
         <div className="between"><span>Total</span><strong className="num">{fmt(totals.total)}</strong></div>
         <div className="bar" style={{ margin: '8px 0 6px' }}><div style={{ width: `${totals.total ? (totals.paid / totals.total) * 100 : 0}%` }} /></div>
         <div className="between small muted"><span>Já paguei {fmt(totals.paid)}</span><span>Falta {fmt(totals.remaining)}</span></div>
@@ -173,53 +219,6 @@ export function CardsScreen({ month, setMonth, goToPeople }: { month: Month; set
         )}
       </div>
 
-      {bills.length === 0 && <div className="card empty-state"><div className="ico">💳</div><p>Nenhuma fatura neste mês.</p></div>}
-
-      {bills.map((b) => {
-        const info = card(b.cardId);
-        return (
-          <div key={b.cardId} className="card">
-            <div className="between">
-              <strong className="row ellipsis" style={{ fontSize: 17 }}>
-                <i style={{ width: 10, height: 10, borderRadius: 5, background: info?.color, display: 'block', flex: 'none' }} />{info?.name}
-              </strong>
-              <strong className="num" style={{ fontSize: 17 }}>{fmt(b.total)}</strong>
-            </div>
-            <div className="between" style={{ marginTop: 6 }}>
-              <DueChip bill={b} />
-              {info && (
-                <button className="link-btn" onClick={() => setDueCard(info)}>
-                  {info.dueDay ? `✏️ vence dia ${info.dueDay}` : '📅 Informar vencimento'}
-                </button>
-              )}
-            </div>
-            <div className="bar" style={{ margin: '10px 0 6px' }}><div style={{ width: `${b.total ? Math.min(100, (b.paid / b.total) * 100) : 0}%` }} /></div>
-            <div className="between small muted"><span>Paguei {fmt(b.paid)}</span><span>Falta {fmt(b.remaining)}</span></div>
-            {b.payments.map((p) => (
-              <button key={p.id} className="badge entry" onClick={() => confirm(`Apagar o pagamento de ${fmt(p.amount)}?`) && deleteCardPayment(p.id)}>
-                {shortDate(p.date)} · {fmt(p.amount)}{p.note ? ` · ${p.note}` : ''} ✕
-              </button>
-            ))}
-            <div className="row" style={{ marginTop: 10 }}>
-              {b.remaining > 0 && <button className="btn small" onClick={() => payBill(b)}>Registrar pagamento</button>}
-              <button className="btn small secondary" onClick={() => setItems(b)}>Ver itens</button>
-            </div>
-            {b.people.length > 0 && (
-              <button className="between small muted" style={{ width: '100%', background: 'none', border: 0, borderTop: '1px solid var(--border)', marginTop: 12, padding: '8px 0 0' }} onClick={goToPeople}>
-                <span>Meu {fmt(b.mine)}</span><span>Terceiros {fmt(b.total - b.mine)} ›</span>
-              </button>
-            )}
-          </div>
-        );
-      })}
-
-      {noDueCards.length > 0 && (
-        <div className="card">
-          <h2>Cartões sem vencimento</h2>
-          <div className="chips">{noDueCards.map((c) => <button key={c.id} className="chip" onClick={() => setDueCard(c)}>📅 {c.name}</button>)}</div>
-        </div>
-      )}
-
       <NotificationsCard />
 
       {form && <PaySheet form={form} onClose={() => setForm(null)} />}
@@ -227,7 +226,7 @@ export function CardsScreen({ month, setMonth, goToPeople }: { month: Month; set
       {items && (
         <Sheet title={`${card(items.cardId)?.name} · ${monthLabel(month)}`} onClose={() => setItems(null)}>
           <div className="list">
-            {[...items.lines].sort((a, b) => b.amount - a.amount).map((l, i) => <LineRow key={i} line={l} value={l.amount} />)}
+            {[...items.lines].sort((x, y) => y.amount - x.amount).map((l, i) => <LineRow key={i} line={l} value={l.amount} />)}
           </div>
           <div className="between" style={{ marginTop: 10, fontWeight: 700 }}><span>Total</span><span className="num">{fmt(items.total)}</span></div>
         </Sheet>

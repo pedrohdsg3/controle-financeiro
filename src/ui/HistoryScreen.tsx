@@ -55,7 +55,7 @@ function Simulator({ data, base, from, to }: { data: Dataset; base: HistoryRow[]
 
   return (
     <div className="card">
-      <h2>🧮 E se eu parcelar?</h2>
+      <h2>E se eu parcelar?</h2>
       <p className="small muted" style={{ marginTop: 0 }}>Veja o efeito de uma compra nova antes de fazer. Nada é salvo.</p>
       <div className="row">
         <div className="field grow"><label>Valor total</label><input className="input" inputMode="decimal" value={totalText} onChange={(e) => setTotalText(e.target.value)} placeholder="0,00" /></div>
@@ -75,7 +75,7 @@ function Simulator({ data, base, from, to }: { data: Dataset; base: HistoryRow[]
               </div>
             );
           })}
-          {sim.some((r) => r.freeBalance < 0) && <p className="small warn">⚠️ Em {sim.filter((r) => r.freeBalance < 0).length} mês(es) o saldo livre fica negativo.</p>}
+          {sim.some((r) => r.freeBalance < 0) && <p className="small warn">Em {sim.filter((r) => r.freeBalance < 0).length} mês(es) o saldo livre fica negativo.</p>}
         </div>
       )}
     </div>
@@ -152,13 +152,13 @@ export function HistoryScreen() {
 
       {goal && (
         <div className="card">
-          <h2>🎯 {goal.destination || 'Meta'}</h2>
+          <h2>{goal.destination || 'Meta'}</h2>
           <div className="between"><span className="big num">{fmt(reserve)}</span><span className="muted num">de {fmt(goal.target)}</span></div>
           <div className="bar" style={{ margin: '10px 0 6px' }}><div style={{ width: `${pct * 100}%` }} /></div>
           <div className="between small muted"><span>{Math.round(pct * 100)}% guardado</span><span>Falta {fmt(Math.max(0, goal.target - reserve))}</span></div>
           <p className="small" style={{ marginBottom: 0 }}>
             {monthsToGoal === null ? 'Toque em “Guardado” num mês da tabela abaixo para registrar o que você separou.'
-              : monthsToGoal === 0 ? '🎉 Meta atingida!'
+              : monthsToGoal === 0 ? 'Meta atingida!'
               : `No ritmo atual (média de ${fmt(Math.round(avg))}/mês), você chega lá em ${monthLabel(addMonths(now, monthsToGoal))}.`}
           </p>
           <button className="btn small" style={{ marginTop: 10 }} onClick={() => setEditSaving(now)}>Guardar em {monthLabel(now)}</button>
@@ -182,7 +182,7 @@ export function HistoryScreen() {
                   <td className="num">{fmtShort(r.totalMine)}</td>
                   <td className="num">{fmtShort(r.pixMine)}</td>
                   <td className={`num ${r.freeBalance < 0 ? 'neg' : 'pos'}`}><strong>{fmtShort(r.freeBalance)}</strong></td>
-                  <td className="num"><button className="chip" style={{ padding: '2px 8px' }} onClick={() => setEditSaving(r.month)}>{fmtShort(r.saved)} ✏️</button></td>
+                  <td className="num"><button className="chip" style={{ padding: '2px 8px' }} onClick={() => setEditSaving(r.month)}>{fmtShort(r.saved)} </button></td>
                   <td className="num">{fmtShort(r.reserve)}</td>
                 </tr>
               ))}

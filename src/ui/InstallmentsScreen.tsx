@@ -5,6 +5,7 @@ import { installmentLastMonth, installmentNumberIn, shares } from '../engine/eng
 import { fmt, parseMoney, splitInstallments } from '../lib/money';
 import { addMonths, currentMonth, monthLabel, monthLabelShort, type Month } from '../lib/months';
 import { Sheet, useData, useLookups } from './common';
+import { Glyph } from './icons';
 import { CardChips, CategoryChips, centsToText, PersonChips, SplitEditor } from './pickers';
 
 export function InstallmentForm({ initial, onClose }: { initial?: Installment; onClose: () => void }) {
@@ -55,7 +56,7 @@ export function InstallmentForm({ initial, onClose }: { initial?: Installment; o
       <div className="field"><span className="label">Cartão</span><CardChips value={cardId} onChange={setCardId} /></div>
       <div className="field"><span className="label">Categoria</span><CategoryChips value={categoryId} onChange={setCategoryId} /></div>
       {!splitOn && <div className="field"><span className="label">Quem usou</span><PersonChips value={usedBy} onChange={setUsedBy} withMe /></div>}
-      <label className="toggle"><span>➗ Dividir com alguém</span><input type="checkbox" checked={splitOn} onChange={(e) => setSplitOn(e.target.checked)} /></label>
+      <label className="toggle"><span>Dividir com alguém</span><input type="checkbox" checked={splitOn} onChange={(e) => setSplitOn(e.target.checked)} /></label>
       {splitOn && <SplitEditor total={total} myShareText={myShareText} setMyShareText={setMyShareText} restPerson={restPerson} setRestPerson={setRestPerson} totalLabel="Total da compra" />}
       {err && <p className="neg small">{err}</p>}
       <div className="row" style={{ marginTop: 8 }}>
@@ -101,7 +102,7 @@ export function InstallmentsScreen() {
     return (
       <button key={i.id} className="item" onClick={() => setEditing(i)}>
         <div className="grow">
-          <div className="between"><span className="ellipsis">{cat?.icon} {i.description}</span><strong className="num">{fmt(parcel)}</strong></div>
+          <div className="between"><span className="ellipsis row" style={{ gap: 6 }}><Glyph e={cat?.icon} color={cat?.color} /> {i.description}</span><strong className="num">{fmt(parcel)}</strong></div>
           <div className="bar" style={{ height: 6, margin: '6px 0 4px' }}><div style={{ width: `${(paid / i.count) * 100}%` }} /></div>
           <div className="between small muted">
             <span className="ellipsis">{card(i.cardId)?.name} · {n ? `parcela ${n}/${i.count}` : paid ? 'quitado' : `começa ${monthLabelShort(i.startMonth)}`}

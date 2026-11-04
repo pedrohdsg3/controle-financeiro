@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { db } from '../db/db';
@@ -22,7 +23,7 @@ export function ReviewScreen({ onEditTx }: { onEditTx: (t: Transaction) => void 
   return (
     <>
       <div className="hint">O app procura lançamentos que parecem errados. Nada é alterado sozinho: você corrige ou marca que está certo.</div>
-      {issues.length === 0 && <div className="card empty-state"><div className="ico">✅</div><p>Nada suspeito.</p></div>}
+      {issues.length === 0 && <div className="card empty-state"><div className="ico"><Check size={32} /></div><p>Nada suspeito.</p></div>}
       {issues.map((i) => {
         const t = i.tx;
         const inst = i.installment;

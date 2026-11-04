@@ -97,9 +97,9 @@ export async function setSaving(month: Month, amount: Cents) {
   else await db.savings.delete(month);
 }
 
-/** Define o vencimento. Na primeira vez, o controle começa pela fatura do mês atual. */
-export async function setCardDueDay(card: Card, dueDay: number | undefined) {
-  await db.cards.update(card.id, { dueDay, dueFrom: card.dueFrom ?? currentMonth() });
+/** Salva vencimento, fechamento e aparência. Na primeira vez, o controle de vencimento começa no mês atual. */
+export async function setCardDetails(card: Card, details: Pick<Card, 'dueDay' | 'closingDay' | 'product' | 'finish'>) {
+  await db.cards.update(card.id, { ...details, dueFrom: card.dueFrom ?? (details.dueDay ? currentMonth() : undefined) });
 }
 
 export async function addCardPayment(p: Omit<CardPayment, 'id' | 'createdAt'>) {

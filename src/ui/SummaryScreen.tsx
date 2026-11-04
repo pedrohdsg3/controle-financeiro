@@ -1,3 +1,4 @@
+import { AlertTriangle, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ME } from '../db/types';
@@ -5,7 +6,8 @@ import { cashView } from '../engine/bills';
 import { reserveUntil, summarizeMonth, type Line } from '../engine/engine';
 import { fmt } from '../lib/money';
 import { monthLabel, todayISO, type Month } from '../lib/months';
-import { Avatar, MonthPicker, Sheet, useData, useLookups } from './common';
+import { Avatar, Glyph } from './icons';
+import { Money, MonthPicker, Sheet, useData, useLookups } from './common';
 import { SavingSheet } from './HistoryScreen';
 
 interface Drill { title: string; lines: Line[]; field: 'amount' | 'mine' | 'others' }
@@ -39,16 +41,16 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
 
       <div className="card">
         <h2>Saldo previsto do mês</h2>
-        <div className={`big num ${s.freeBalance < 0 ? 'neg' : 'pos'}`}>{fmt(s.freeBalance)}</div>
+        <div className={s.freeBalance < 0 ? 'neg' : 'pos'}><Money value={s.freeBalance} className="money-xl" /></div>
         <p className="small muted" style={{ margin: '4px 0 0' }}>
           Considera que todo mundo vai te pagar o combinado.
         </p>
         <button className="between" style={{ width: '100%', background: 'none', border: 0, borderTop: '1px solid var(--border)', marginTop: 10, padding: '10px 0 0' }} onClick={() => setCashOpen(true)}>
-          <span>💵 Em caixa neste mês ›</span>
+          <span className="row" style={{ gap: 6 }}><Wallet size={15} aria-hidden /> Em caixa neste mês ›</span>
           <strong className={`num ${cash.cash < 0 ? 'neg' : 'pos'}`}>{fmt(cash.cash)}</strong>
         </button>
         <div className="between" style={{ marginTop: 6 }}>
-          <span>⚠️ Se ninguém mais me pagar</span>
+          <span className="row" style={{ gap: 6 }}><AlertTriangle size={15} aria-hidden /> Se ninguém mais me pagar</span>
           <strong className={`num ${cash.ifNoOnePays < 0 ? 'neg' : 'pos'}`}>{fmt(cash.ifNoOnePays)}</strong>
         </div>
       </div>
@@ -71,7 +73,7 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
               <button key={c.cardId ?? 'none'} className="item" onClick={() => setDrill({ title: name, lines: c.lines, field: 'amount' })}>
                 <div className="grow">
                   <div className="between">
-                    <strong className="ellipsis">{info ? '💳' : '🧾'} {name}</strong>
+                    <strong className="ellipsis row" style={{ gap: 6 }}><Glyph e={info ? '💳' : '🧾'} /> {name}</strong>
                     <strong className="num">{fmt(c.total)}</strong>
                   </div>
                   <div className="stack" style={{ width: `${(c.total / maxCard) * 100}%`, gap: 2, background: 'transparent' }}
@@ -127,7 +129,7 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
                 return (
                   <button key={c.categoryId} className="item" onClick={() => setDrill({ title: cat?.name ?? 'Sem categoria', lines: s.lines.filter((l) => (l.categoryId ?? 'sem-categoria') === c.categoryId && l.mine), field: 'mine' })}>
                     <i style={{ width: 10, height: 10, borderRadius: 3, background: cat?.color, display: 'block', flex: 'none' }} />
-                    <span className="grow">{cat?.icon} {cat?.name ?? 'Sem categoria'}</span>
+                    <span className="grow row" style={{ gap: 6 }}><Glyph e={cat?.icon} color={cat?.color} /> {cat?.name ?? 'Sem categoria'}</span>
                     <span className="small muted">{Math.round((c.mine / totalCat) * 100)}%</span>
                     <span className="num" style={{ minWidth: 92, textAlign: 'right' }}>{fmt(c.mine)}</span>
                   </button>
@@ -140,7 +142,7 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
 
       {goal && (
         <div className="card">
-          <h2>🎯 Meta de viagem</h2>
+          <h2>Meta de viagem</h2>
           <div className="between"><strong>{goal.destination || 'Viagem'}</strong><span className="num">{fmt(goal.target)}</span></div>
           <div className="bar" style={{ margin: '10px 0 6px' }}><div style={{ width: `${pct * 100}%` }} /></div>
           <div className="between small muted">
