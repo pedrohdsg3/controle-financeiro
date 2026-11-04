@@ -76,8 +76,8 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
                   </div>
                   <div className="stack" style={{ width: `${(c.total / maxCard) * 100}%`, gap: 2, background: 'transparent' }}
                     title={`Meu ${fmt(c.mine)} · Terceiros ${fmt(c.others)}`}>
-                    {c.mine > 0 && <div style={{ flex: c.mine, background: '#2a78d6', borderRadius: 4 }} />}
-                    {c.others > 0 && <div style={{ flex: c.others, background: '#eb6834', borderRadius: 4 }} />}
+                    {c.mine > 0 && <div style={{ flex: c.mine, background: 'var(--series-1)', borderRadius: 4 }} />}
+                    {c.others > 0 && <div style={{ flex: c.others, background: 'var(--series-2)', borderRadius: 4 }} />}
                   </div>
                   <div className="between small muted" style={{ marginTop: 4 }}>
                     <span>meu {fmt(c.mine)}</span>
@@ -89,8 +89,8 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
           })}
         </div>
         <div className="legend">
-          <span><i style={{ background: '#2a78d6' }} />Meu</span>
-          <span><i style={{ background: '#eb6834' }} />Terceiros</span>
+          <span><i style={{ background: 'var(--series-1)' }} />Meu</span>
+          <span><i style={{ background: 'var(--series-2)' }} />Terceiros</span>
         </div>
       </div>
 

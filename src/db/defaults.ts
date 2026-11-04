@@ -39,5 +39,12 @@ export function defaultPeople(): Person[] {
   return DEFAULT_PEOPLE.map((name, i) => ({ id: idFromName('p', name), name, order: i }));
 }
 
-/** Paleta categórica em ordem fixa. Passa no teste de daltonismo; no tema escuro, 3 cores ficam claras demais. */
+/** Mesma cor em versão para fundo escuro (a versão clara reprova em luminosidade nesse tema). */
+const DARK_VARIANT: Record<string, string> = {
+  '#2a78d6': '#3987e5', '#eb6834': '#d95926', '#1baf7a': '#199e70', '#eda100': '#c98500',
+  '#e87ba4': '#d55181', '#008300': '#008300', '#6250d6': '#9085e9', '#e34948': '#e66767',
+};
+export const chartColor = (color: string, dark: boolean) => (dark ? DARK_VARIANT[color.toLowerCase()] ?? color : color);
+
+/** Paleta categórica em ordem fixa, validada para daltonismo. */
 export const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];

@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { chartColor } from '../db/defaults';
 import { loadDataset } from '../db/db';
 import { ME, type Dataset } from '../db/types';
 import { addMonths, monthLabelLong, type Month } from '../lib/months';
@@ -10,9 +11,16 @@ export function useDataset(): Dataset | undefined {
 }
 
 /** Dicionários para mostrar nomes a partir dos ids. */
+/** Tema escuro ativo? Decide a variante das cores de categoria. */
+export const DarkContext = createContext(false);
+
 export function useLookups(data: Dataset) {
+  const dark = useContext(DarkContext);
   const card = (id?: string | null) => data.cards.find((c) => c.id === id);
-  const category = (id?: string) => data.categories.find((c) => c.id === id);
+  const category = (id?: string) => {
+    const c = data.categories.find((x) => x.id === id);
+    return c && { ...c, color: chartColor(c.color, dark) };
+  };
   const personName = (id?: string) =>
     id === ME ? 'Eu' : id === '?' ? 'Sem pessoa definida' : data.people.find((p) => p.id === id)?.name ?? '—';
   return { card, category, personName };

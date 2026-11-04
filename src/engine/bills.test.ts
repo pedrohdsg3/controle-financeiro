@@ -8,7 +8,7 @@ import { db, loadDataset, replaceDataset } from '../db/db';
 import { emptyDataset, ME, type Dataset } from '../db/types';
 import { daysSinceBackup, restoreWithSnapshot, undoRestore } from '../lib/backupFile';
 import { parseMoney } from '../lib/money';
-import { calendarLink, cashView, dueAlerts, dueDateOf, monthBills, openDebts, personMonthStatus, trackingStart } from './bills';
+import { calendarLink, cashView, dueAlerts, dueDateOf, monthBills, openDebts, openToSend, peopleLedger, allocatePayment, trackingStart } from './bills';
 import { summarizeMonth, suggestBillMonth } from './engine';
 import { reviewIssues } from './review';
 
@@ -32,7 +32,7 @@ describe('controle de faturas', () => {
     expect(bills[0]).toMatchObject({ total: 14000, mine: 10000, paid: 6000, remaining: 8000, days: 5 });
     expect(bills[0].people[0]).toMatchObject({ personId: 'p1', owed: 4000, received: 1500, pending: 2500 });
     expect(totals).toMatchObject({ remaining: 8000, owed: 4000, pending: 2500 });
-    expect(personMonthStatus(d, NOV, '2026-11-10', 'p1')).toEqual({ received: 1500, pending: 2500 });
+    expect(peopleLedger(d, NOV, '2026-11-10')[0]).toMatchObject({ personId: 'p1', spent: 4000, paid: 1500, toReceive: 2500, open: 2500 });
   });
 
   it('pagar e receber não muda gastos nem saldo do mês', () => {
@@ -239,5 +239,57 @@ describe('restauração com rede de segurança', () => {
   it('conta dias desde o último backup', () => {
     expect(daysSinceBackup(undefined, '2026-11-10')).toBeNull();
     expect(daysSinceBackup('2026-11-03', '2026-11-10')).toBe(7);
+  });
+});
+
+describe('extrato por pessoa', () => {
+  const data = () => {
+    const d = base();
+    d.settlements.push(
+      { id: 'f', month: NOV, personId: 'p1', direction: 'paysMe', amount: 1000, createdAt: 0 },
+      { id: 'e', month: NOV, personId: 'p1', direction: 'iOwe', amount: 7000, createdAt: 0 },
+    );
+    return d;
+  };
+  const today = '2026-11-10';
+
+  it('saldo em aberto começa igual ao da planilha e cai conforme confirma', () => {
+    const d = data();
+    let p = peopleLedger(d, NOV, today)[0];
+    const planilha = summarizeMonth(d, NOV).people.find((x) => x.personId === 'p1')!.net;
+    expect(p).toMatchObject({ spent: 4000, owes: 5000, paid: 0, toReceive: 5000, toSend: 7000, open: -2000 });
+    expect(p.open).toBe(planilha);
+
+    d.receipts.push({ id: 'r', personId: 'p1', month: NOV, cardId: 'c1', amount: 4000, date: today, createdAt: 0 });
+    d.settlements[0].doneAt = today;
+    p = peopleLedger(d, NOV, today)[0];
+    expect(p).toMatchObject({ paid: 5000, toReceive: 0, open: -7000, sources: [] });
+
+    d.settlements[1].doneAt = today;
+    p = peopleLedger(d, NOV, today)[0];
+    expect(p).toMatchObject({ toSend: 0, sent: 7000, open: 0 });
+    expect(summarizeMonth(d, NOV).people.find((x) => x.personId === 'p1')!.net).toBe(planilha);
+  });
+
+  it('pessoa só com combinado por fora aparece', () => {
+    const d = base();
+    d.transactions = [];
+    d.settlements.push({ id: 'x', month: NOV, personId: 'p1', direction: 'iOwe', amount: 500, createdAt: 0 });
+    expect(peopleLedger(d, NOV, today)[0]).toMatchObject({ personId: 'p1', spent: 0, open: -500 });
+  });
+
+  it('distribui o pagamento entre os cartões na ordem', () => {
+    const s = [{ cardId: 'a', pending: 1000 }, { cardId: null, pending: 500 }];
+    expect(allocatePayment(s, 1200)).toEqual([{ cardId: 'a', amount: 1000 }, { cardId: null, amount: 200 }]);
+    expect(allocatePayment(s, 300)).toEqual([{ cardId: 'a', amount: 300 }]);
+    expect(allocatePayment(s, 9000)).toHaveLength(2);
+  });
+
+  it('em aberto até hoje inclui por fora pendente e o que devo enviar', () => {
+    const d = data();
+    expect(openDebts(d, today)[0]).toMatchObject({ personId: 'p1', pending: 5000 });
+    expect(openToSend(d, today)).toEqual([{ personId: 'p1', amount: 7000, months: [NOV] }]);
+    d.settlements[1].doneAt = today;
+    expect(openToSend(d, today)).toEqual([]);
   });
 });

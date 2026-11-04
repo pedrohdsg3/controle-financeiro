@@ -123,15 +123,15 @@ export function InstallmentsScreen() {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110 }}>
           {ahead.map((a) => (
             <div key={a.m} title={`${monthLabel(a.m)}: total ${fmt(a.total)} · meu ${fmt(a.mine)}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', gap: 2 }}>
-              {a.total - a.mine > 0 && <div style={{ height: `${((a.total - a.mine) / max) * 100}%`, background: '#eb6834', borderRadius: '4px 4px 0 0' }} />}
-              {a.mine > 0 && <div style={{ height: `${(a.mine / max) * 100}%`, background: '#2a78d6', borderRadius: a.total - a.mine > 0 ? 0 : '4px 4px 0 0' }} />}
+              {a.total - a.mine > 0 && <div style={{ height: `${((a.total - a.mine) / max) * 100}%`, background: 'var(--series-2)', borderRadius: '4px 4px 0 0' }} />}
+              {a.mine > 0 && <div style={{ height: `${(a.mine / max) * 100}%`, background: 'var(--series-1)', borderRadius: a.total - a.mine > 0 ? 0 : '4px 4px 0 0' }} />}
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
           {ahead.map((a) => <div key={a.m} className="small muted" style={{ flex: 1, textAlign: 'center', fontSize: 10 }}>{monthLabelShort(a.m).slice(0, 3)}</div>)}
         </div>
-        <div className="legend"><span><i style={{ background: '#2a78d6' }} />Meu</span><span><i style={{ background: '#eb6834' }} />Terceiros</span></div>
+        <div className="legend"><span><i style={{ background: 'var(--series-1)' }} />Meu</span><span><i style={{ background: 'var(--series-2)' }} />Terceiros</span></div>
         <div className="between small" style={{ marginTop: 8 }}>
           <span className="muted">Este mês (meu)</span><strong className="num">{fmt(ahead[0].mine)}</strong>
         </div>

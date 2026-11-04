@@ -8,8 +8,8 @@ import { addMonths, currentMonth, monthLabel, monthLabelShort, type Month } from
 import { Sheet, useData } from './common';
 import { CardChips, centsToText } from './pickers';
 
-const BLUE = '#2a78d6';
-const ORANGE = '#eb6834';
+const BLUE = 'var(--series-1)';
+const ORANGE = 'var(--series-2)';
 const tooltipStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 13 };
 
 /** Editar quanto foi guardado no mês (usado no Histórico e no Resumo). */

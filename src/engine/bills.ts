@@ -3,7 +3,7 @@
  * Os valores vêm do motor (expandMonth), então sempre batem com Resumo e Terceiros.
  * Pagamentos e recebimentos são só controle: não alteram gastos nem o saldo do mês.
  */
-import type { Card, CardPayment, Dataset, Receipt } from '../db/types';
+import type { Card, CardPayment, Dataset, Receipt, Settlement } from '../db/types';
 import type { Cents } from '../lib/money';
 import { addMonths, daysInMonth, monthOf, monthRange, type ISODate, type Month } from '../lib/months';
 import { expandMonth, summarizeMonth, type Line } from './engine';
@@ -92,11 +92,78 @@ export function monthBills(data: Dataset, month: Month, today: ISODate): MonthBi
   };
 }
 
-/** Quanto a pessoa já pagou e quanto falta, no mês, somando todos os cartões. */
-export function personMonthStatus(data: Dataset, month: Month, today: ISODate, personId: string) {
-  const { bills, outside } = monthBills(data, month, today);
-  const rows = [...bills.flatMap((b) => b.people), ...outside].filter((p) => p.personId === personId);
-  return { received: sum(rows.map((r) => r.received)), pending: sum(rows.map((r) => r.pending)) };
+/** De onde vem o que a pessoa ainda deve (cartão, ou null = fora do cartão). */
+export interface DebtSource {
+  cardId: string | null;
+  pending: Cents;
+}
+
+/** Tudo o que envolve uma pessoa no mês, num lugar só. É a base da tela Pessoas. */
+export interface PersonLedger {
+  personId: string;
+  byCard: Record<string, Cents>;
+  recurring: Cents;
+  pix: Cents;
+  /** Gastos dela nos meus cartões, fixos e Pix. */
+  spent: Cents;
+  /** O que ela combinou de me passar por fora. */
+  paysMe: Cents;
+  /** Tudo o que ela deve no mês (gastos + por fora). */
+  owes: Cents;
+  /** O que já me pagou (recebimentos + por fora confirmado). */
+  paid: Cents;
+  /** O que falta me pagar. */
+  toReceive: Cents;
+  /** O que eu preciso enviar a ela e ainda não enviei. */
+  toSend: Cents;
+  /** Enviei a ela (já confirmado). */
+  sent: Cents;
+  /** Saldo em aberto: positivo = ela me deve; negativo = eu devo a ela. */
+  open: Cents;
+  sources: DebtSource[];
+  receipts: Receipt[];
+  settlements: Settlement[];
+}
+
+export function peopleLedger(data: Dataset, month: Month, today: ISODate): PersonLedger[] {
+  const summary = summarizeMonth(data, month);
+  const { bills: monthly, outside } = monthBills(data, month, today);
+  const rows = [
+    ...monthly.flatMap((b) => b.people.map((p) => ({ ...p, cardId: b.cardId as string | null }))),
+    ...outside.map((p) => ({ ...p, cardId: null as string | null })),
+  ];
+  const ids = new Set([...rows.map((r) => r.personId), ...data.settlements.filter((x) => x.month === month).map((x) => x.personId)]);
+  return [...ids].map((personId) => {
+    const t = summary.people.find((p) => p.personId === personId);
+    const mine = rows.filter((r) => r.personId === personId);
+    const settlements = data.settlements.filter((x) => x.month === month && x.personId === personId);
+    const total = (direction: Settlement['direction'], done: boolean) =>
+      sum(settlements.filter((x) => x.direction === direction && !!x.doneAt === done).map((x) => x.amount));
+    const spent = t?.subtotal ?? 0;
+    const paysMe = total('paysMe', true) + total('paysMe', false);
+    const toReceive = sum(mine.map((r) => r.pending)) + total('paysMe', false);
+    const toSend = total('iOwe', false);
+    return {
+      personId, byCard: t?.byCard ?? {}, recurring: t?.recurring ?? 0, pix: t?.pix ?? 0, spent, paysMe, owes: spent + paysMe,
+      paid: sum(mine.map((r) => r.received)) + total('paysMe', true), toReceive, toSend, sent: total('iOwe', true),
+      open: toReceive - toSend,
+      sources: mine.filter((r) => r.pending > 0).map((r) => ({ cardId: r.cardId, pending: r.pending })),
+      receipts: mine.flatMap((r) => r.receipts), settlements,
+    };
+  }).sort((a, b) => b.open - a.open);
+}
+
+/** Distribui um pagamento da pessoa entre os cartões em que ela deve, na ordem. */
+export function allocatePayment(sources: DebtSource[], amount: Cents): { cardId: string | null; amount: Cents }[] {
+  const out: { cardId: string | null; amount: Cents }[] = [];
+  let left = amount;
+  for (const s of sources) {
+    if (left <= 0) break;
+    const part = Math.min(left, s.pending);
+    if (part > 0) out.push({ cardId: s.cardId, amount: part });
+    left -= part;
+  }
+  return out;
 }
 
 /** Desde quando existe controle. Meses anteriores não contam como dívida: não foram registrados. */
@@ -126,8 +193,33 @@ export function openDebts(data: Dataset, today: ISODate): OpenDebt[] {
       else d.months.push({ month, pending: p.pending });
       map.set(p.personId, d);
     }
+    // "Vai me passar por fora" ainda não confirmado também é dívida.
+    for (const x of data.settlements) {
+      if (x.month !== month || x.direction !== 'paysMe' || x.doneAt) continue;
+      const d = map.get(x.personId) ?? { personId: x.personId, pending: 0, months: [] };
+      d.pending += x.amount;
+      const m = d.months.find((y) => y.month === month);
+      if (m) m.pending += x.amount;
+      else d.months.push({ month, pending: x.amount });
+      map.set(x.personId, d);
+    }
   }
   return [...map.values()].sort((a, b) => b.pending - a.pending);
+}
+
+/** O que eu ainda preciso enviar a cada pessoa, do início do controle até o mês atual. */
+export function openToSend(data: Dataset, today: ISODate): { personId: string; amount: Cents; months: Month[] }[] {
+  const from = trackingStart(data, today);
+  const now = monthOf(today);
+  const map = new Map<string, { personId: string; amount: Cents; months: Month[] }>();
+  for (const x of data.settlements) {
+    if (x.direction !== 'iOwe' || x.doneAt || x.month < from || x.month > now) continue;
+    const e = map.get(x.personId) ?? { personId: x.personId, amount: 0, months: [] };
+    e.amount += x.amount;
+    if (!e.months.includes(x.month)) e.months.push(x.month);
+    map.set(x.personId, e);
+  }
+  return [...map.values()].sort((a, b) => b.amount - a.amount);
 }
 
 export interface OpenBill {

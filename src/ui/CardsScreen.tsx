@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { addCardPayment, addReceipt, deleteCardPayment, deleteReceipt, setCardDueDay } from '../db/actions';
+import { addCardPayment, deleteCardPayment, setCardDueDay } from '../db/actions';
 import type { Card } from '../db/types';
 import {
-  ALERT_DAYS, calendarLink, dueAlerts, dueLabel, monthBills, openDebts, type Bill, type OpenBill, type PersonBill,
+  ALERT_DAYS, calendarLink, dueAlerts, dueLabel, monthBills, type Bill, type OpenBill,
 } from '../engine/bills';
 import { fmt, parseMoney, type Cents } from '../lib/money';
-import { monthLabel, monthLabelShort, todayISO, type ISODate, type Month } from '../lib/months';
+import { monthLabel, todayISO, type ISODate, type Month } from '../lib/months';
 import {
   enableNotifications, notificationPermission, notificationsSupported, registerBackgroundCheck, showTestNotification,
 } from '../lib/notify';
@@ -14,14 +14,14 @@ import { centsToText, LineRow } from './pickers';
 
 const shortDate = (d: ISODate) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 
-interface PayForm {
+export interface PayForm {
   title: string;
   hint: string;
   suggested: Cents;
   onSave: (amount: Cents, date: ISODate, note?: string) => Promise<void>;
 }
 
-function PaySheet({ form, onClose }: { form: PayForm; onClose: () => void }) {
+export function PaySheet({ form, onClose }: { form: PayForm; onClose: () => void }) {
   const [text, setText] = useState(centsToText(form.suggested));
   const [date, setDate] = useState(todayISO());
   const [note, setNote] = useState('');
@@ -138,12 +138,11 @@ function NotificationsCard() {
   );
 }
 
-export function CardsScreen({ month, setMonth }: { month: Month; setMonth: (m: Month) => void }) {
+export function CardsScreen({ month, setMonth, goToPeople }: { month: Month; setMonth: (m: Month) => void; goToPeople: () => void }) {
   const data = useData();
-  const { card, personName } = useLookups(data);
+  const { card } = useLookups(data);
   const today = todayISO();
-  const { bills, outside, totals } = useMemo(() => monthBills(data, month, today), [data, month, today]);
-  const debts = useMemo(() => openDebts(data, today), [data, today]);
+  const { bills, totals } = useMemo(() => monthBills(data, month, today), [data, month, today]);
   const alerts = useMemo(() => dueAlerts(data, today), [data, today]);
   const noDueCards = data.cards.filter((c) => !c.archived && !c.dueDay);
   const [form, setForm] = useState<PayForm | null>(null);
@@ -156,33 +155,6 @@ export function CardsScreen({ month, setMonth }: { month: Month; setMonth: (m: M
     suggested: b.remaining,
     onSave: (amount, date, note) => addCardPayment({ cardId: b.cardId, month, amount, date, note }),
   });
-  const receive = (p: PersonBill, cardId: string | null, where: string) => setForm({
-    title: `${personName(p.personId)} me pagou`,
-    hint: `Parte de ${personName(p.personId)} em ${where}, ${monthLabel(month)}. Pode ser parcial.`,
-    suggested: p.pending,
-    onSave: (amount, date, note) => addReceipt({ personId: p.personId, month, cardId, amount, date, note }),
-  });
-
-  const personRows = (people: PersonBill[], cardId: string | null, where: string) => people.map((p) => (
-    <div key={p.personId} className="person-row">
-      <div className="between">
-        <span className="ellipsis">{personName(p.personId)}</span>
-        <span className="row" style={{ flex: 'none' }}>
-          <span className="num">{fmt(p.owed)}</span>
-          {p.pending > 0
-            ? <button className="btn small secondary" onClick={() => receive(p, cardId, where)}>Recebi</button>
-            : <span className="badge state-ok">✅ Pagou</span>}
-        </span>
-      </div>
-      {p.received > 0 && p.pending > 0 && <div className="small muted">Já pagou {fmt(p.received)} · falta {fmt(p.pending)}</div>}
-      {p.receipts.map((r) => (
-        <button key={r.id} className="badge entry" onClick={() => confirm(`Apagar o recebimento de ${fmt(r.amount)}?`) && deleteReceipt(r.id)}>
-          {shortDate(r.date)} · {fmt(r.amount)}{r.note ? ` · ${r.note}` : ''} ✕
-        </button>
-      ))}
-    </div>
-  ));
-
   return (
     <>
       <MonthPicker month={month} onChange={setMonth} />
@@ -194,10 +166,10 @@ export function CardsScreen({ month, setMonth }: { month: Month; setMonth: (m: M
         <div className="bar" style={{ margin: '8px 0 6px' }}><div style={{ width: `${totals.total ? (totals.paid / totals.total) * 100 : 0}%` }} /></div>
         <div className="between small muted"><span>Já paguei {fmt(totals.paid)}</span><span>Falta {fmt(totals.remaining)}</span></div>
         {totals.owed > 0 && (
-          <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 10 }}>
-            <div className="between"><span>A receber de terceiros</span><strong className="num">{fmt(totals.owed)}</strong></div>
+          <button style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 0, borderTop: '1px solid var(--border)', marginTop: 10, padding: '10px 0 0' }} onClick={goToPeople}>
+            <div className="between"><span>Parte de terceiros nestas faturas ›</span><strong className="num">{fmt(totals.owed)}</strong></div>
             <div className="between small muted"><span>Recebi {fmt(totals.received)}</span><span>Falta {fmt(totals.pending)}</span></div>
-          </div>
+          </button>
         )}
       </div>
 
@@ -233,36 +205,13 @@ export function CardsScreen({ month, setMonth }: { month: Month; setMonth: (m: M
               <button className="btn small secondary" onClick={() => setItems(b)}>Ver itens</button>
             </div>
             {b.people.length > 0 && (
-              <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                <div className="between small muted" style={{ marginBottom: 4 }}><span>Meu {fmt(b.mine)}</span><span>Terceiros {fmt(b.total - b.mine)}</span></div>
-                {personRows(b.people, b.cardId, info?.name ?? 'cartão')}
-              </div>
+              <button className="between small muted" style={{ width: '100%', background: 'none', border: 0, borderTop: '1px solid var(--border)', marginTop: 12, padding: '8px 0 0' }} onClick={goToPeople}>
+                <span>Meu {fmt(b.mine)}</span><span>Terceiros {fmt(b.total - b.mine)} ›</span>
+              </button>
             )}
           </div>
         );
       })}
-
-      {outside.length > 0 && (
-        <div className="card">
-          <h2>Fora do cartão (fixos e Pix divididos)</h2>
-          {personRows(outside, null, 'gastos fora do cartão')}
-        </div>
-      )}
-
-      <div className="card">
-        <h2>Quem ainda me deve (até hoje)</h2>
-        {debts.length === 0 ? <p className="small muted" style={{ margin: 0 }}>Ninguém com pagamento em aberto. 🎉</p> : (
-          <div className="list">
-            {debts.map((d) => (
-              <div key={d.personId} className="item" style={{ display: 'block' }}>
-                <div className="between"><strong>{personName(d.personId)}</strong><strong className="num">{fmt(d.pending)}</strong></div>
-                <div className="small muted">{d.months.map((m) => `${monthLabelShort(m.month)}: ${fmt(m.pending)}`).join(' · ')}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        <p className="small muted" style={{ marginBottom: 0 }}>Conta a partir do mês em que você começou a usar este controle. Meses anteriores não entram, porque não foram registrados.</p>
-      </div>
 
       {noDueCards.length > 0 && (
         <div className="card">

@@ -12,20 +12,22 @@
   --warn: #c27c0e;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 16px rgba(16, 24, 40, 0.06);
   --radius: 16px;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg: #161616; --surface: #1f1f1f; --surface-2: #2a2a2a; --border: #343434;
     --text: #ededed; --muted: #a3a3a3; --accent: #8b85ff; --accent-soft: #2d2b40;
-    --pos: #34d399; --neg: #f87171; --warn: #fbbf24;
+    --pos: #34d399; --neg: #f87171; --warn: #fbbf24; --series-1: #3987e5; --series-2: #d95926;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.25); color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
   --bg: #161616; --surface: #1f1f1f; --surface-2: #2a2a2a; --border: #343434;
   --text: #ededed; --muted: #a3a3a3; --accent: #8b85ff; --accent-soft: #2d2b40;
-  --pos: #34d399; --neg: #f87171; --warn: #fbbf24;
+  --pos: #34d399; --neg: #f87171; --warn: #fbbf24; --series-1: #3987e5; --series-2: #d95926;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.25); color-scheme: dark;
 }
 
@@ -50,8 +52,8 @@ button { cursor: pointer; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface);
   border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
 }
-.tabbar-inner { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); }
-.tab { background: none; border: 0; padding: 8px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 10.5px; }
+.tabbar-inner { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+.tab { background: none; border: 0; padding: 8px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; }
 .tab .ico { font-size: 20px; line-height: 1; }
 .tab.active { color: var(--accent); font-weight: 600; }
 
@@ -179,3 +181,7 @@ button { cursor: pointer; }
 
 .notice { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-color: var(--accent); }
 .review-actions { display: flex; gap: 6px; margin-top: 6px; }
+
+/* Aba Contas */
+.person-head { font-size: 17px; font-weight: 700; }
+.chip-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; }

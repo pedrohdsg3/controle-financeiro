@@ -6,7 +6,7 @@ import { currentMonth, todayISO, type ISODate } from './lib/months';
 import { notificationPermission, registerBackgroundCheck, syncDueSchedule } from './lib/notify';
 import { CardsScreen, DueBanner } from './ui/CardsScreen';
 import { CalendarScreen } from './ui/CalendarScreen';
-import { DataProvider, useDataset } from './ui/common';
+import { DarkContext, DataProvider, useDataset } from './ui/common';
 import { MoreScreen, type Theme } from './ui/MoreScreen';
 import { QuickAdd } from './ui/QuickAdd';
 import { SummaryScreen } from './ui/SummaryScreen';
@@ -15,12 +15,11 @@ import { HistoryScreen } from './ui/HistoryScreen';
 import { Loading } from './ui/Guards';
 import { BackupReminder, UpdateBar } from './ui/Notices';
 
-type Tab = 'calendar' | 'cards' | 'summary' | 'people' | 'history' | 'more';
+type Tab = 'calendar' | 'accounts' | 'summary' | 'history' | 'more';
 const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
   { id: 'calendar', icon: '📅', label: 'Calendário', title: 'Calendário' },
-  { id: 'cards', icon: '💳', label: 'Cartões', title: 'Pagamento dos cartões' },
+  { id: 'accounts', icon: '💳', label: 'Contas', title: 'Contas' },
   { id: 'summary', icon: '📊', label: 'Resumo', title: 'Resumo do mês' },
-  { id: 'people', icon: '👥', label: 'Terceiros', title: 'Terceiros' },
   { id: 'history', icon: '📈', label: 'Histórico', title: 'Histórico' },
   { id: 'more', icon: '☰', label: 'Mais', title: 'Mais' },
 ];
@@ -30,6 +29,7 @@ const loadTheme = (): Theme => { try { return (localStorage.getItem('theme') as 
 export default function App() {
   const data = useDataset();
   const [tab, setTab] = useState<Tab>('calendar');
+  const [accountsView, setAccountsView] = useState<'cards' | 'people'>('cards');
   const [month, setMonth] = useState(currentMonth());
   const [adding, setAdding] = useState<{ date?: ISODate; editing?: Transaction } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
@@ -62,6 +62,7 @@ export default function App() {
 
   const current = TABS.find((t) => t.id === tab)!;
   return (
+    <DarkContext.Provider value={isDark}>
     <DataProvider data={data}>
       <div className="app">
         <header className="topbar">
@@ -75,14 +76,23 @@ export default function App() {
         {tab === 'calendar' && (
           <>
             <BackupReminder />
-            <DueBanner alerts={alerts} onOpen={(m) => { setMonth(m); setTab('cards'); }} />
+            <DueBanner alerts={alerts} onOpen={(m) => { setMonth(m); setAccountsView('cards'); setTab('accounts'); }} />
             <CalendarScreen month={month} setMonth={setMonth} onAdd={(date) => setAdding({ date })}
               onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />
           </>
         )}
-        {tab === 'cards' && <CardsScreen month={month} setMonth={setMonth} />}
+        {tab === 'accounts' && (
+          <>
+            <div className="seg">
+              <button className={accountsView === 'cards' ? 'on' : ''} onClick={() => setAccountsView('cards')}>💳 Cartões</button>
+              <button className={accountsView === 'people' ? 'on' : ''} onClick={() => setAccountsView('people')}>👥 Pessoas</button>
+            </div>
+            {accountsView === 'cards'
+              ? <CardsScreen month={month} setMonth={setMonth} goToPeople={() => setAccountsView('people')} />
+              : <PeopleScreen month={month} setMonth={setMonth} />}
+          </>
+        )}
         {tab === 'summary' && <SummaryScreen month={month} setMonth={setMonth} />}
-        {tab === 'people' && <PeopleScreen month={month} setMonth={setMonth} />}
         {tab === 'history' && <HistoryScreen />}
         {tab === 'more' && <MoreScreen theme={theme} setTheme={setTheme} onEditTx={(t) => setAdding({ editing: t })} />}
       </div>
@@ -93,12 +103,13 @@ export default function App() {
           {TABS.map((t) => (
             <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
               <span className="ico">{t.icon}</span>{t.label}
-              {t.id === 'cards' && alerts.length > 0 && <span className="count">{alerts.length}</span>}
+              {t.id === 'accounts' && alerts.length > 0 && <span className="count">{alerts.length}</span>}
             </button>
           ))}
         </div>
       </nav>
       {adding && <QuickAdd date={adding.date} editing={adding.editing} onClose={() => setAdding(null)} />}
     </DataProvider>
+    </DarkContext.Provider>
   );
 }
