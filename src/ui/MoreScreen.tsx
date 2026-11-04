@@ -103,7 +103,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         <div className="list">
           <button className="item" onClick={() => setPage('installments')}>
             <span className="avatar" style={{ background: 'var(--accent-soft)' }}>📆</span>
-            <span className="grow"><strong>Parcelamentos</strong><br /><span className="small muted">{data.installments.length} compras · parcelas por mês</span></span><span className="muted">›</span>
+            <span className="grow"><strong>Parcelamentos</strong><br /><span className="small muted">{data.installments.length} {data.installments.length === 1 ? 'compra' : 'compras'} · parcelas por mês</span></span><span className="muted">›</span>
           </button>
           <button className="item" onClick={() => setPage('recurring')}>
             <span className="avatar" style={{ background: 'var(--accent-soft)' }}>🔁</span>
@@ -255,7 +255,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         {msg && <p className="small" style={{ whiteSpace: 'pre-line' }}>{msg}</p>}
       </Section>
 
-      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.2</p>
+      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.2.1</p>
     </>
   );
 }
