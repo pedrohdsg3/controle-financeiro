@@ -13,6 +13,7 @@ import { SummaryScreen } from './ui/SummaryScreen';
 import { PeopleScreen } from './ui/PeopleScreen';
 import { HistoryScreen } from './ui/HistoryScreen';
 import { Loading } from './ui/Guards';
+import { BackupReminder, UpdateBar } from './ui/Notices';
 
 type Tab = 'calendar' | 'cards' | 'summary' | 'people' | 'history' | 'more';
 const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
@@ -70,8 +71,10 @@ export default function App() {
             {isDark ? '☀️' : '🌙'}
           </button>
         </header>
+        <UpdateBar />
         {tab === 'calendar' && (
           <>
+            <BackupReminder />
             <DueBanner alerts={alerts} onOpen={(m) => { setMonth(m); setTab('cards'); }} />
             <CalendarScreen month={month} setMonth={setMonth} onAdd={(date) => setAdding({ date })}
               onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />
@@ -81,7 +84,7 @@ export default function App() {
         {tab === 'summary' && <SummaryScreen month={month} setMonth={setMonth} />}
         {tab === 'people' && <PeopleScreen month={month} setMonth={setMonth} />}
         {tab === 'history' && <HistoryScreen />}
-        {tab === 'more' && <MoreScreen theme={theme} setTheme={setTheme} />}
+        {tab === 'more' && <MoreScreen theme={theme} setTheme={setTheme} onEditTx={(t) => setAdding({ editing: t })} />}
       </div>
 
       <button className="fab" aria-label="Lançar gasto ou receita" onClick={() => setAdding({})}>+</button>

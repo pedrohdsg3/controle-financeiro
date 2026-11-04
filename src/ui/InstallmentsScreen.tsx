@@ -7,7 +7,7 @@ import { addMonths, currentMonth, monthLabel, monthLabelShort, type Month } from
 import { Sheet, useData, useLookups } from './common';
 import { CardChips, CategoryChips, centsToText, PersonChips, SplitEditor } from './pickers';
 
-function InstallmentForm({ initial, onClose }: { initial?: Installment; onClose: () => void }) {
+export function InstallmentForm({ initial, onClose }: { initial?: Installment; onClose: () => void }) {
   const data = useData();
   const [description, setDescription] = useState(initial?.description ?? '');
   const [totalText, setTotalText] = useState(centsToText(initial?.total));

@@ -6,7 +6,7 @@
 import type { Card, CardPayment, Dataset, Receipt } from '../db/types';
 import type { Cents } from '../lib/money';
 import { addMonths, daysInMonth, monthOf, monthRange, type ISODate, type Month } from '../lib/months';
-import { expandMonth, type Line } from './engine';
+import { expandMonth, summarizeMonth, type Line } from './engine';
 
 const sum = (xs: Cents[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -178,4 +178,34 @@ export function calendarLink(card: Card, today: ISODate): string | null {
     recur: `RRULE:FREQ=MONTHLY;BYMONTHDAY=${card.dueDay}`,
   });
   return `https://calendar.google.com/calendar/render?${q.toString()}`;
+}
+
+export interface CashView {
+  inflow: { salary: Cents; otherIncome: Cents; received: Cents; receivedOutside: Cents; total: Cents };
+  outflow: { cardsPaid: Cents; nonCard: Cents; pix: Cents; saved: Cents; sent: Cents; total: Cents };
+  /** O que já entrou menos o que já saiu no mês. */
+  cash: Cents;
+  /** Saldo previsto descontando tudo que terceiros ainda não pagaram. */
+  ifNoOnePays: Cents;
+}
+
+/**
+ * Visão de dinheiro real do mês. O saldo previsto (planilha) assume que todos pagam; esta não.
+ * Salário e receitas contam como recebidos; fixos fora do cartão, Pix e guardado, como já saídos.
+ */
+export function cashView(data: Dataset, month: Month, today: ISODate): CashView {
+  const s = summarizeMonth(data, month);
+  const { bills, totals } = monthBills(data, month, today);
+  const settled = (direction: 'paysMe' | 'iOwe', done: boolean) => sum(data.settlements
+    .filter((x) => x.month === month && x.direction === direction && !!x.doneAt === done).map((x) => x.amount));
+  const inflow = {
+    salary: s.salary, otherIncome: s.otherIncome, received: totals.received, receivedOutside: settled('paysMe', true), total: 0,
+  };
+  inflow.total = inflow.salary + inflow.otherIncome + inflow.received + inflow.receivedOutside;
+  const outflow = {
+    cardsPaid: sum(bills.map((b) => b.paid)), nonCard: s.cards.find((c) => c.cardId === null)?.total ?? 0,
+    pix: s.pixTotal, saved: s.saved, sent: settled('iOwe', true), total: 0,
+  };
+  outflow.total = outflow.cardsPaid + outflow.nonCard + outflow.pix + outflow.saved + outflow.sent;
+  return { inflow, outflow, cash: inflow.total - outflow.total, ifNoOnePays: s.freeBalance - totals.pending - settled('paysMe', false) };
 }

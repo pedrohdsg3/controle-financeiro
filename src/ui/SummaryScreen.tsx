@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ME } from '../db/types';
+import { cashView } from '../engine/bills';
 import { reserveUntil, summarizeMonth, type Line } from '../engine/engine';
 import { fmt } from '../lib/money';
-import { monthLabel, type Month } from '../lib/months';
+import { monthLabel, todayISO, type Month } from '../lib/months';
 import { Avatar, MonthPicker, Sheet, useData, useLookups } from './common';
 import { SavingSheet } from './HistoryScreen';
 
@@ -15,6 +16,8 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
   const s = useMemo(() => summarizeMonth(data, month), [data, month]);
   const [drill, setDrill] = useState<Drill | null>(null);
   const [savingOpen, setSavingOpen] = useState(false);
+  const [cashOpen, setCashOpen] = useState(false);
+  const cash = useMemo(() => cashView(data, month, todayISO()), [data, month]);
 
   const goal = data.goals[0];
   const reserve = reserveUntil(data, month);
@@ -35,18 +38,26 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
       <MonthPicker month={month} onChange={setMonth} />
 
       <div className="card">
-        <h2>Saldo livre do mês</h2>
+        <h2>Saldo previsto do mês</h2>
         <div className={`big num ${s.freeBalance < 0 ? 'neg' : 'pos'}`}>{fmt(s.freeBalance)}</div>
         <p className="small muted" style={{ margin: '4px 0 0' }}>
-          Renda − meus gastos − guardado − Pix − o que enviei para terceiros
+          Considera que todo mundo vai te pagar o combinado.
         </p>
+        <button className="between" style={{ width: '100%', background: 'none', border: 0, borderTop: '1px solid var(--border)', marginTop: 10, padding: '10px 0 0' }} onClick={() => setCashOpen(true)}>
+          <span>💵 Em caixa neste mês ›</span>
+          <strong className={`num ${cash.cash < 0 ? 'neg' : 'pos'}`}>{fmt(cash.cash)}</strong>
+        </button>
+        <div className="between" style={{ marginTop: 6 }}>
+          <span>⚠️ Se ninguém mais me pagar</span>
+          <strong className={`num ${cash.ifNoOnePays < 0 ? 'neg' : 'pos'}`}>{fmt(cash.ifNoOnePays)}</strong>
+        </div>
       </div>
 
       <div className="card flow">
         <h2>Renda</h2>
         {flow('Salário', s.salary)}
         {flow('Outras receitas', s.otherIncome, { sign: '+' })}
-        {flow('Recebido de terceiros (por fora)', s.incomeFromOthers, { sign: '+' })}
+        {flow('Terceiros por fora (combinado)', s.incomeFromOthers, { sign: '+' })}
         {flow('Total renda', s.totalIncome, { cls: 'total' })}
       </div>
 
@@ -90,8 +101,8 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
         {flow('Total gastos (meu)', s.totalMine, { cls: 'total', onClick: () => setDrill({ title: 'Meus gastos', lines: s.lines.filter((l) => l.source !== 'pix' && l.mine), field: 'mine' }) })}
         {flow('Guardado / poupança', s.saved, { sign: '-', onClick: () => setSavingOpen(true) })}
         {flow('Gastos no Pix', s.pixMine, { sign: '-', onClick: pixLines.length ? () => setDrill({ title: 'Gastos no Pix', lines: pixLines, field: 'mine' }) : undefined })}
-        {flow('Enviei para terceiros', s.sentToOthers, { sign: '-' })}
-        {flow('Saldo do mês (livre)', s.freeBalance, { cls: `total ${s.freeBalance < 0 ? 'neg' : 'pos'}` })}
+        {flow('Enviar para terceiros (combinado)', s.sentToOthers, { sign: '-' })}
+        {flow('Saldo previsto', s.freeBalance, { cls: `total ${s.freeBalance < 0 ? 'neg' : 'pos'}` })}
       </div>
 
       <div className="card">
@@ -151,6 +162,25 @@ export function SummaryScreen({ month, setMonth }: { month: Month; setMonth: (m:
             ))}
           </div>
         </div>
+      )}
+      {cashOpen && (
+        <Sheet title={`Em caixa · ${monthLabel(month)}`} onClose={() => setCashOpen(false)}>
+          <div className="flow">
+            <p className="small muted" style={{ marginTop: 0 }}>Só o que de fato entrou e saiu. Faturas contam quando você registra o pagamento na aba Cartões.</p>
+            {flow('Salário', cash.inflow.salary)}
+            {flow('Outras receitas', cash.inflow.otherIncome)}
+            {flow('Terceiros me pagaram', cash.inflow.received, { sign: '+' })}
+            {flow('Recebido por fora', cash.inflow.receivedOutside, { sign: '+' })}
+            {flow('Total que entrou', cash.inflow.total, { cls: 'total' })}
+            {flow('Faturas pagas', cash.outflow.cardsPaid, { sign: '-' })}
+            {flow('Fixos/boletos fora do cartão', cash.outflow.nonCard, { sign: '-' })}
+            {flow('Pix/dinheiro', cash.outflow.pix, { sign: '-' })}
+            {flow('Guardado', cash.outflow.saved, { sign: '-' })}
+            {flow('Enviado a terceiros', cash.outflow.sent, { sign: '-' })}
+            {flow('Em caixa', cash.cash, { cls: `total ${cash.cash < 0 ? 'neg' : 'pos'}` })}
+            <p className="small muted" style={{ marginBottom: 0 }}>Salário, receitas e fixos fora do cartão são considerados recebidos e pagos no mês; o app não tem como confirmar isso.</p>
+          </div>
+        </Sheet>
       )}
       {savingOpen && <SavingSheet month={month} onClose={() => setSavingOpen(false)} />}
 

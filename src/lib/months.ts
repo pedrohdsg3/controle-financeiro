@@ -88,3 +88,11 @@ export function excelSerialToISO(serial: number): ISODate {
   const ms = Math.round((serial - 25569) * 86400 * 1000);
   return new Date(ms).toISOString().slice(0, 10);
 }
+
+export function addDaysISO(d: ISODate, days: number): ISODate {
+  const t = Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)) + days);
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+/** "2026-11-04" → "04/11" */
+export const shortDateBR = (d: ISODate): string => `${d.slice(8, 10)}/${d.slice(5, 7)}`;

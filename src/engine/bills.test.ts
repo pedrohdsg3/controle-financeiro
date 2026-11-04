@@ -6,9 +6,11 @@ import { describe, expect, it } from 'vitest';
 import { makeBackup, parseBackup } from '../backup';
 import { db, loadDataset, replaceDataset } from '../db/db';
 import { emptyDataset, ME, type Dataset } from '../db/types';
+import { daysSinceBackup, restoreWithSnapshot, undoRestore } from '../lib/backupFile';
 import { parseMoney } from '../lib/money';
-import { calendarLink, dueAlerts, dueDateOf, monthBills, openDebts, personMonthStatus, trackingStart } from './bills';
+import { calendarLink, cashView, dueAlerts, dueDateOf, monthBills, openDebts, personMonthStatus, trackingStart } from './bills';
 import { summarizeMonth, suggestBillMonth } from './engine';
+import { reviewIssues } from './review';
 
 const NOV = '2026-11';
 const base = (): Dataset => ({
@@ -157,5 +159,85 @@ describe('service worker de notificação', () => {
     expect(pick(s, '2026-11-22')[0].days).toBe(-7);
     expect(pick(s, '2026-11-23')).toHaveLength(0);
     expect(pick(null, '2026-11-12')).toHaveLength(0);
+  });
+});
+
+describe('saldo em caixa', () => {
+  const dec = () => {
+    const d = base();
+    d.salaries.push({ id: 's', fromMonth: '2026-01', amount: 100000 });
+    d.settlements.push(
+      { id: 'a', month: NOV, personId: 'p1', direction: 'paysMe', amount: 700, createdAt: 0 },
+      { id: 'b', month: NOV, personId: 'p1', direction: 'iOwe', amount: 500, createdAt: 0 },
+    );
+    return d;
+  };
+  it('previsto conta tudo; caixa só o que aconteceu; pior caso desconta o pendente', () => {
+    const d = dec();
+    const s = summarizeMonth(d, NOV);
+    expect(s.freeBalance).toBe(100000 + 700 - 10000 - 500);
+    let c = cashView(d, NOV, '2026-11-10');
+    expect(c.cash).toBe(100000);
+    expect(c.ifNoOnePays).toBe(s.freeBalance - 4000 - 700);
+
+    d.cardPayments.push({ id: 'p', cardId: 'c1', month: NOV, amount: 14000, date: '2026-11-10', createdAt: 0 });
+    d.receipts.push({ id: 'r', personId: 'p1', month: NOV, cardId: 'c1', amount: 4000, date: '2026-11-10', createdAt: 0 });
+    d.settlements[0].doneAt = '2026-11-10';
+    d.settlements[1].doneAt = '2026-11-10';
+    c = cashView(d, NOV, '2026-11-10');
+    expect(c.cash).toBe(100000 + 4000 + 700 - 14000 - 500);
+    // Com tudo quitado, os três números coincidem: o previsto virou realidade.
+    expect(c.ifNoOnePays).toBe(summarizeMonth(d, NOV).freeBalance);
+    expect(c.cash).toBe(summarizeMonth(d, NOV).freeBalance);
+    expect(summarizeMonth(d, NOV).freeBalance).toBe(s.freeBalance);
+  });
+});
+
+describe('revisão de lançamentos', () => {
+  const tx = (over: object) => ({ id: 't', kind: 'card' as const, date: '2026-11-01', month: NOV, cardId: 'c1', description: 'Compra', categoryId: 'cat', amount: 5000, usedBy: ME, createdAt: 0, ...over });
+  const issues = (...txs: object[]) => {
+    const d = base();
+    d.categories = [{ id: 'cat', name: 'A', icon: '', color: '', order: 0 }];
+    d.transactions = txs.map((t) => tx(t));
+    return reviewIssues(d).map((i) => i.key.split(':')[0]);
+  };
+  it('lançamento normal não gera aviso', () => expect(issues({})).toEqual([]));
+  it('valor baixo (provável 1.500 lido como 1,50)', () => expect(issues({ amount: 150 })).toEqual(['valor']));
+  it('compra depois da fatura ou fatura distante', () => {
+    expect(issues({ date: '2026-12-07' })).toEqual(['data']);
+    expect(issues({ date: '2026-07-01' })).toEqual(['data']);
+  });
+  it('sem categoria e categoria caída por padrão', () => {
+    expect(issues({ categoryId: undefined })).toEqual(['categoria']);
+    expect(issues({ description: 'Gasto' })).toEqual(['categoria']);
+  });
+  it('divisão sem pessoa', () => expect(issues({ split: { myShare: 1000, restPersonId: '' } })).toEqual(['pessoa']));
+  it('repetido só marca o segundo', () => {
+    expect(issues({ id: 'a' }, { id: 'b' })).toEqual(['duplicado']);
+  });
+  it('"Está certo" não repete', () => {
+    const d = base();
+    d.categories = [{ id: 'cat', name: 'A', icon: '', color: '', order: 0 }];
+    d.transactions = [tx({ amount: 150 })];
+    expect(reviewIssues(d, ['valor:t'])).toEqual([]);
+  });
+});
+
+describe('restauração com rede de segurança', () => {
+  it('guarda os dados atuais e permite desfazer', async () => {
+    const a = base();
+    await replaceDataset(a);
+    const novo = emptyDataset();
+    novo.people.push({ id: 'z', name: 'Outro', order: 0 });
+    await restoreWithSnapshot(novo);
+    expect((await loadDataset()).transactions).toHaveLength(0);
+    expect(await undoRestore()).toBe(true);
+    const back = await loadDataset();
+    expect(back.transactions).toHaveLength(2);
+    expect(await undoRestore()).toBe(false);
+  });
+  it('conta dias desde o último backup', () => {
+    expect(daysSinceBackup(undefined, '2026-11-10')).toBeNull();
+    expect(daysSinceBackup('2026-11-03', '2026-11-10')).toBe(7);
   });
 });

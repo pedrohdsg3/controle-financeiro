@@ -176,3 +176,6 @@ button { cursor: pointer; }
 .due-banner button { width: 100%; background: none; border: 0; padding: 8px 0; text-align: left; }
 .tab { position: relative; }
 .tab .count { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; border-radius: 8px; background: var(--neg); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; padding: 0 3px; }
+
+.notice { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-color: var(--accent); }
+.review-actions { display: flex; gap: 6px; margin-top: 6px; }

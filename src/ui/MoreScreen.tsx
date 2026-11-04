@@ -1,15 +1,19 @@
-import { useState, type ReactNode } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   addCard, addCategory, addPerson, deleteSalary, removeCard, removeCategory, removePerson, saveSalary,
 } from '../db/actions';
-import { db, loadDataset, replaceDataset } from '../db/db';
-import type { Dataset } from '../db/types';
-import { makeBackup, parseBackup } from '../backup';
+import { db, loadDataset } from '../db/db';
+import type { Dataset, Transaction } from '../db/types';
+import { parseBackup } from '../backup';
+import { reviewIssues } from '../engine/review';
+import { daysSinceBackup, exportBackup, KEY_LAST_BACKUP, KEY_RESTORE_SNAPSHOT, restoreWithSnapshot, undoRestore } from '../lib/backupFile';
 import { fmt, parseMoney } from '../lib/money';
 import { currentMonth, monthLabel, todayISO } from '../lib/months';
 import { useData } from './common';
 import { InstallmentsScreen } from './InstallmentsScreen';
 import { RecurringScreen } from './RecurringScreen';
+import { KEY_REVIEW_DISMISSED, ReviewScreen } from './ReviewScreen';
 
 export type Theme = 'auto' | 'light' | 'dark';
 
@@ -55,7 +59,7 @@ function pickFile(accept: string): Promise<File | null> {
   });
 }
 
-export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
+export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setTheme: (t: Theme) => void; onEditTx: (t: Transaction) => void }) {
   const data = useData();
   const cards = data.cards.filter((c) => !c.archived).sort((a, b) => a.order - b.order);
   const categories = data.categories.filter((c) => !c.archived).sort((a, b) => a.order - b.order);
@@ -65,14 +69,23 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
   const [salMonth, setSalMonth] = useState(currentMonth());
   const [salValue, setSalValue] = useState('');
   const [msg, setMsg] = useState('');
-  const [page, setPage] = useState<'installments' | 'recurring' | null>(null);
+  const [page, setPage] = useState<'installments' | 'recurring' | 'review' | null>(null);
+  const lastBackup = useLiveQuery(() => db.meta.get(KEY_LAST_BACKUP), []);
+  const snapshot = useLiveQuery(() => db.meta.get(KEY_RESTORE_SNAPSHOT), []);
+  const dismissed = useLiveQuery(() => db.meta.get(KEY_REVIEW_DISMISSED), []);
+  const issueCount = reviewIssues(data, (dismissed?.value as string[] | undefined) ?? []).length;
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  useEffect(() => { navigator.storage?.persisted?.().then(setPersisted).catch(() => {}); }, []);
+  const backupDays = daysSinceBackup(lastBackup?.value, todayISO());
 
   if (page) {
     return (
       <>
         <button className="btn small secondary" style={{ marginBottom: 12 }} onClick={() => setPage(null)}>‹ Voltar</button>
-        <h2 style={{ margin: '0 0 12px' }}>{page === 'installments' ? '📆 Parcelamentos' : '🔁 Fixos e assinaturas'}</h2>
-        {page === 'installments' ? <InstallmentsScreen /> : <RecurringScreen />}
+        <h2 style={{ margin: '0 0 12px' }}>{page === 'installments' ? '📆 Parcelamentos' : page === 'recurring' ? '🔁 Fixos e assinaturas' : '🔎 Revisar lançamentos'}</h2>
+        {page === 'installments' && <InstallmentsScreen />}
+        {page === 'recurring' && <RecurringScreen />}
+        {page === 'review' && <ReviewScreen onEditTx={onEditTx} />}
       </>
     );
   }
@@ -80,8 +93,7 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
   async function restore(d: Dataset, what: string) {
     const n = (await db.transactions.count()) + (await db.installments.count());
     if (n > 0 && !confirm(`Isto SUBSTITUI todos os dados atuais (${n} lançamentos/parcelamentos) pelos do arquivo. Continuar?`)) return;
-    await replaceDataset(d);
-    await db.meta.put({ key: 'seeded', value: true });
+    await restoreWithSnapshot(d);
     setMsg(`✅ ${what} carregado: ${d.transactions.length} lançamentos, ${d.installments.length} parcelamentos, ${d.recurring.length} fixos.`);
   }
 
@@ -97,10 +109,16 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
             <span className="avatar" style={{ background: 'var(--accent-soft)' }}>🔁</span>
             <span className="grow"><strong>Fixos e assinaturas</strong><br /><span className="small muted">{data.recurring.length} cadastrados · boletos, contas, streaming</span></span><span className="muted">›</span>
           </button>
+          <button className="item" onClick={() => setPage('review')}>
+            <span className="avatar" style={{ background: 'var(--accent-soft)' }}>🔎</span>
+            <span className="grow"><strong>Revisar lançamentos</strong><br /><span className="small muted">{issueCount ? `${issueCount} para conferir` : 'Nada suspeito'}</span></span><span className="muted">›</span>
+          </button>
         </div>
       </div>
 
-      <div className="hint">Tudo fica guardado só neste aparelho. Faça backup de vez em quando em <strong>Backup</strong>.</div>
+      <div className="hint">
+        Tudo fica guardado só neste aparelho. {backupDays === null ? 'Nenhum backup registrado ainda.' : backupDays === 0 ? 'Último backup: hoje.' : `Último backup: há ${backupDays} dia(s).`}
+      </div>
 
       <Section title="🎨 Aparência" hint="“Automático” segue o tema do celular. Você também pode alternar a qualquer momento pelo botão ☀️/🌙 no topo da tela.">
         <div className="seg" style={{ marginBottom: 0 }}>
@@ -192,20 +210,35 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
 
       <Section title="💾 Backup e importação" defaultOpen={data.transactions.length === 0}>
         <div className="list">
-          <button className="btn" onClick={async () => download(`financas-backup-${todayISO()}.json`, JSON.stringify(makeBackup(await loadDataset())), 'application/json')}>
-            ⬇️ Exportar backup (JSON)
-          </button>
-          <p className="small muted">Guarde esse arquivo no Drive ou mande para você mesmo. Serve para trocar de celular.</p>
+          <button className="btn" onClick={async () => {
+            try {
+              const r = await exportBackup();
+              if (r !== 'cancelled') setMsg(r === 'shared' ? '✅ Backup enviado.' : '✅ Backup baixado. Guarde o arquivo fora do celular.');
+            } catch (e) { setMsg(`❌ Não consegui exportar: ${(e as Error).message}`); }
+          }}>⬇️ Fazer backup</button>
+          <p className="small muted">
+            Abre o menu de compartilhar: escolha o Drive. Serve para trocar de celular.
+            {persisted === false && ' ⚠️ O navegador ainda não garantiu estes dados contra limpeza automática, então o backup é ainda mais importante.'}
+          </p>
           <button className="btn secondary" onClick={async () => {
             const { exportExcel } = await import('../export/toExcel');
             download(`financas-${todayISO()}.xlsx`, exportExcel(await loadDataset()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
           }}>📗 Exportar para Excel (.xlsx)</button>
-          <p className="small muted">Planilha só para consulta (lançamentos, parcelas, fixos, histórico e terceiros). Para restaurar, use o backup JSON.</p>
+          <p className="small muted">Planilha só para consulta (lançamentos, parcelas, fixos, histórico e terceiros). Para restaurar, use o backup.</p>
           <button className="btn secondary" onClick={async () => {
-            const f = await pickFile('application/json,.json');
+            const f = await pickFile('application/json,text/plain,.json,.txt');
             if (!f) return;
             try { await restore(parseBackup(await f.text()), 'Backup'); } catch (e) { setMsg(`❌ ${(e as Error).message}`); }
-          }}>⬆️ Restaurar backup (JSON)</button>
+          }}>⬆️ Restaurar backup</button>
+          {snapshot && (
+            <>
+              <div style={{ height: 8 }} />
+              <button className="btn secondary" onClick={async () => {
+                if (!confirm('Voltar para os dados de antes da última restauração?')) return;
+                setMsg(await undoRestore() ? '✅ Restauração desfeita.' : '❌ Não há o que desfazer.');
+              }}>↩️ Desfazer a última restauração ({(snapshot.value as { at: string }).at.split('-').reverse().join('/')})</button>
+            </>
+          )}
           <div style={{ height: 8 }} />
           <button className="btn secondary" onClick={async () => {
             const f = await pickFile('.xlsx');
@@ -222,7 +255,7 @@ export function MoreScreen({ theme, setTheme }: { theme: Theme; setTheme: (t: Th
         {msg && <p className="small" style={{ whiteSpace: 'pre-line' }}>{msg}</p>}
       </Section>
 
-      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.0</p>
+      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.2</p>
     </>
   );
 }

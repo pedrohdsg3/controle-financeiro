@@ -305,5 +305,14 @@ export function dayTotals(data: Dataset, from: ISODate, to: ISODate) {
     }
     map.set(t.date, e);
   }
+  // Compra parcelada aparece no dia em que foi feita, com o valor total.
+  for (const i of data.installments) {
+    if (!i.purchaseDate || i.purchaseDate < from || i.purchaseDate > to) continue;
+    const e = map.get(i.purchaseDate) ?? { spentMine: 0, spentTotal: 0, income: 0, cats: new Set<string>() };
+    e.spentMine += shares(i.total, i.usedBy, i.split).mine;
+    e.spentTotal += i.total;
+    e.cats.add(i.categoryId);
+    map.set(i.purchaseDate, e);
+  }
   return map;
 }

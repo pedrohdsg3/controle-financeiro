@@ -57,6 +57,7 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
   async function save(addAnother = false) {
     setError('');
     if (amount <= 0) return setError('Digite um valor.');
+    if (kind !== 'income' && !categories.some((c) => c.id === categoryId)) return setError('Escolha uma categoria.');
     if (kind === 'card' && !cardId) return setError('Escolha um cartão.');
     let split: Split | undefined;
     if (kind !== 'income' && splitOn) {
@@ -65,19 +66,19 @@ export function QuickAdd({ date: initialDate, editing, onClose }: QuickAddProps)
       split = { myShare, restPersonId: restPerson };
     }
     const cat = categories.find((c) => c.id === categoryId);
-    const desc = description.trim() || (kind === 'income' ? 'Receita' : cat?.name ?? 'Gasto');
+    const desc = description.trim() || (kind === 'income' ? 'Receita' : cat?.name ?? '');
     const who = split ? ME : usedBy;
 
     if (kind === 'card' && installOn && count >= 2 && !editing) {
       await saveInstallment({
-        description: desc, cardId, categoryId: categoryId || categories[0]?.id, usedBy: who, split,
+        description: desc, cardId, categoryId, usedBy: who, split,
         total: amount, count, startMonth: month, purchaseDate: date,
       });
     } else {
       await saveTransaction({
         id: editing?.id, createdAt: editing?.createdAt, kind, date, month, description: desc,
         cardId: kind === 'card' ? cardId : undefined,
-        categoryId: kind === 'income' ? undefined : categoryId || categories[0]?.id,
+        categoryId: kind === 'income' ? undefined : categoryId,
         amount, usedBy: kind === 'income' ? ME : who, split: kind === 'income' ? undefined : split,
       });
     }

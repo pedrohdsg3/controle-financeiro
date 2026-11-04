@@ -113,6 +113,8 @@ export interface Settlement {
   direction: 'paysMe' | 'iOwe';
   amount: Cents;
   note?: string;
+  /** Quando o dinheiro de fato foi recebido/enviado. Vazio = ainda só combinado. */
+  doneAt?: ISODate;
   createdAt: number;
 }
 

@@ -4,7 +4,7 @@ import type { Settlement } from '../db/types';
 import { summarizeMonth, UNASSIGNED, type PersonTotals } from '../engine/engine';
 import { personMonthStatus } from '../engine/bills';
 import { fmt, parseMoney } from '../lib/money';
-import { monthLabel, todayISO, type Month } from '../lib/months';
+import { monthLabel, shortDateBR, todayISO, type Month } from '../lib/months';
 import { MonthPicker, Sheet, useData, useLookups } from './common';
 import { centsToText, LineRow, PersonChips } from './pickers';
 
@@ -20,12 +20,13 @@ function SettlementForm({ month, initial, onClose }: { month: Month; initial: Pa
   const [amountText, setAmountText] = useState(centsToText(initial.amount));
   const [note, setNote] = useState(initial.note ?? '');
   const [m, setM] = useState<Month>(initial.month ?? month);
+  const [done, setDone] = useState(!!initial.doneAt);
   const [err, setErr] = useState('');
   const save = async () => {
     const amount = parseMoney(amountText);
     if (!personId) return setErr('Escolha a pessoa.');
     if (!amount || amount <= 0) return setErr('Digite o valor.');
-    await saveSettlement({ id: initial.id, createdAt: initial.createdAt, month: m, personId, direction: initial.direction, amount, note: note.trim() || undefined });
+    await saveSettlement({ id: initial.id, createdAt: initial.createdAt, month: m, personId, direction: initial.direction, amount, note: note.trim() || undefined, doneAt: done ? initial.doneAt ?? todayISO() : undefined });
     onClose();
   };
   return (
@@ -43,6 +44,10 @@ function SettlementForm({ month, initial, onClose }: { month: Month; initial: Pa
           <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opcional" />
         </div>
       </div>
+      <label className="toggle">
+        <span>{initial.direction === 'paysMe' ? '✅ Já recebi este valor' : '✅ Já enviei este valor'}</span>
+        <input type="checkbox" checked={done} onChange={(e) => setDone(e.target.checked)} />
+      </label>
       {err && <p className="neg small">{err}</p>}
       <div className="row">
         {initial.id && <button className="btn danger small" onClick={async () => { if (confirm('Apagar?')) { await deleteSettlement(initial.id!); onClose(); } }}>Apagar</button>}
@@ -119,7 +124,7 @@ export function PeopleScreen({ month, setMonth }: { month: Month; setMonth: (m: 
           </div>
           {settlements.filter((x) => x.personId === p.personId).map((x) => (
             <button key={x.id} className="badge" style={{ marginRight: 6, marginTop: 6, border: 0 }} onClick={() => setForm(x)}>
-              ✏️ {DIR_LABEL[x.direction]}: {fmt(x.amount)}{x.note ? ` · ${x.note}` : ''}
+              {x.doneAt ? `✅ ${x.direction === 'paysMe' ? 'Recebido' : 'Enviado'} ${shortDateBR(x.doneAt)}` : `⏳ ${DIR_LABEL[x.direction]}`}: {fmt(x.amount)}{x.note ? ` · ${x.note}` : ''}
             </button>
           ))}
           <div className="row" style={{ marginTop: 10 }}>

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { ME, type Transaction } from '../db/types';
-import { dayTotals, recurringActiveIn, txLine } from '../engine/engine';
+import { ME, type Installment, type Transaction } from '../db/types';
+import { dayTotals, recurringActiveIn, shares, txLine } from '../engine/engine';
 import { fmt, fmtShort } from '../lib/money';
 import { daysInMonth, monthLabel, monthOf, todayISO, weekdayOfFirst, type ISODate, type Month } from '../lib/months';
 import { Avatar, MonthPicker, useData, useLookups } from './common';
+import { InstallmentForm } from './InstallmentsScreen';
 
 const DOW = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
@@ -20,6 +21,7 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
   const { card, category, personName } = useLookups(data);
   const today = todayISO();
   const [selected, setSelected] = useState<ISODate>(monthOf(today) === month ? today : `${month}-01`);
+  const [editingInst, setEditingInst] = useState<Installment | null>(null);
   const sel = monthOf(selected) === month ? selected : `${month}-01`;
 
   const nDays = daysInMonth(month);
@@ -28,7 +30,8 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
   const monthIncome = [...totals.values()].reduce((a, t) => a + t.income, 0);
 
   const dayTx = data.transactions.filter((t) => t.date === sel).sort((a, b) => b.createdAt - a.createdAt);
-  const dueToday = data.recurring.filter((r) => recurringActiveIn(r, month) && r.dueDay === Number(sel.slice(8)));
+  const dayInst = data.installments.filter((i) => i.purchaseDate === sel);
+  const dueToday = data.recurring.filter((r) => recurringActiveIn(r, month) && Math.min(r.dueDay, nDays) === Number(sel.slice(8)));
 
   const cells: (ISODate | null)[] = [
     ...Array.from({ length: weekdayOfFirst(month) }, () => null),
@@ -47,7 +50,7 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
 
       <div className="card">
         <div className="between small">
-          <span className="muted">Gasto meu (pela data da compra)</span>
+          <span className="muted">Compras feitas no mês (minha parte)</span>
           <strong className="num neg">{fmt(monthSpent)}</strong>
         </div>
         {monthIncome > 0 && (
@@ -56,6 +59,7 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
             <strong className="num pos">{fmt(monthIncome)}</strong>
           </div>
         )}
+        <p className="small muted" style={{ margin: '6px 0 0' }}>Conta pela data da compra; parcelada entra com o valor total no dia dela. O quanto cai em cada fatura, com fixos e parcelas, está no Resumo.</p>
       </div>
 
       <div className="cal" role="grid" aria-label={`Calendário de ${monthLabel(month)}`}>
@@ -83,7 +87,7 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
           <h2 style={{ margin: 0 }}>{new Date(sel + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
           <button className="btn small" onClick={() => onAdd(sel)}>+ Lançar</button>
         </div>
-        {dayTx.length === 0 && dueToday.length === 0 && <p className="muted small">Nada lançado neste dia.</p>}
+        {dayTx.length === 0 && dayInst.length === 0 && dueToday.length === 0 && <p className="muted small">Nada lançado neste dia.</p>}
         <div className="list">
           {dayTx.map((t) => {
             const l = txLine(t);
@@ -107,6 +111,23 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
               </button>
             );
           })}
+          {dayInst.map((i) => {
+            const cat = category(i.categoryId);
+            const mine = shares(i.total, i.usedBy, i.split).mine;
+            return (
+              <button key={i.id} className="item" onClick={() => setEditingInst(i)}>
+                <Avatar icon="📆" color={cat?.color} />
+                <div className="grow">
+                  <div className="ellipsis">{i.description}</div>
+                  <div className="small muted ellipsis">💳 {card(i.cardId)?.name ?? '?'} · {i.count}× · 1ª em {monthLabel(i.startMonth)}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="num">{fmt(i.total)}</div>
+                  {mine !== i.total && <div className="small muted num">meu {fmt(mine)}</div>}
+                </div>
+              </button>
+            );
+          })}
           {dueToday.map((r) => (
             <div key={r.id} className="item">
               <Avatar icon="🔁" color={category(r.categoryId)?.color} />
@@ -119,6 +140,7 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
           ))}
         </div>
       </div>
+      {editingInst && <InstallmentForm initial={editingInst} onClose={() => setEditingInst(null)} />}
     </>
   );
 }
