@@ -68,24 +68,20 @@ export function CardWallet({ items, active, onActive }: {
   const [flippedId, setFlippedId] = useState<string | null>(null);
   const activeId = items[active]?.card.id;
   const autoScroll = useRef(false);
-  const autoTimer = useRef<number | undefined>(undefined);
+  const swipedTo = useRef<number | null>(null);
 
-  // Mantém o cartão ativo centralizado quando ele muda de fora (ex: tocar num aviso ou num ponto).
+  // Centraliza quando o cartão muda de fora (aviso, ponto, toque no vizinho). Nunca durante o deslizar do
+  // dedo, e sem animação: uma rolagem animada atrasada levava o cartão um passo além do certo.
   useEffect(() => {
     const el = ref.current?.children[active] as HTMLElement | undefined;
     const box = ref.current;
-    if (!el || !box) return;
+    if (!el || !box || swipedTo.current === active) return;
+    swipedTo.current = active;
     const target = el.offsetLeft - (box.clientWidth - el.clientWidth) / 2;
     if (Math.abs(box.scrollLeft - target) <= 4) return;
-    // Durante esta rolagem automática, os eventos de scroll não podem redefinir o cartão ativo.
     autoScroll.current = true;
-    clearTimeout(autoTimer.current);
-    autoTimer.current = window.setTimeout(() => {
-      // Se a animação não terminou (aparelho lento), posiciona de vez antes de voltar a ouvir o scroll.
-      if (Math.abs(box.scrollLeft - target) > 4) box.scrollTo({ left: target, behavior: 'auto' });
-      window.setTimeout(() => { autoScroll.current = false; }, 80);
-    }, 600);
-    box.scrollTo({ left: target, behavior: 'smooth' });
+    box.scrollTo({ left: target, behavior: 'auto' });
+    window.setTimeout(() => { autoScroll.current = false; }, 120);
   }, [active, activeId]);
 
   useEffect(() => { setFlippedId(null); }, [activeId]);
@@ -101,7 +97,10 @@ export function CardWallet({ items, active, onActive }: {
       const d = Math.abs(el.offsetLeft + el.clientWidth / 2 - center);
       if (d < dist) { dist = d; best = i; }
     });
-    if (best !== active) onActive(best);
+    if (best !== active) {
+      swipedTo.current = best;
+      onActive(best);
+    }
   };
 
   return (
