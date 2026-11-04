@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ensureDefaults } from './db/actions';
 import type { Transaction } from './db/types';
-import { currentMonth, type ISODate } from './lib/months';
+import { dueAlerts } from './engine/bills';
+import { currentMonth, todayISO, type ISODate } from './lib/months';
+import { notificationPermission, registerBackgroundCheck, syncDueSchedule } from './lib/notify';
+import { CardsScreen, DueBanner } from './ui/CardsScreen';
 import { CalendarScreen } from './ui/CalendarScreen';
 import { DataProvider, useDataset } from './ui/common';
 import { MoreScreen, type Theme } from './ui/MoreScreen';
@@ -11,9 +14,10 @@ import { PeopleScreen } from './ui/PeopleScreen';
 import { HistoryScreen } from './ui/HistoryScreen';
 import { Loading } from './ui/Guards';
 
-type Tab = 'calendar' | 'summary' | 'people' | 'history' | 'more';
+type Tab = 'calendar' | 'cards' | 'summary' | 'people' | 'history' | 'more';
 const TABS: { id: Tab; icon: string; label: string; title: string }[] = [
   { id: 'calendar', icon: '📅', label: 'Calendário', title: 'Calendário' },
+  { id: 'cards', icon: '💳', label: 'Cartões', title: 'Pagamento dos cartões' },
   { id: 'summary', icon: '📊', label: 'Resumo', title: 'Resumo do mês' },
   { id: 'people', icon: '👥', label: 'Terceiros', title: 'Terceiros' },
   { id: 'history', icon: '📈', label: 'Histórico', title: 'Histórico' },
@@ -31,7 +35,12 @@ export default function App() {
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const isDark = theme === 'dark' || (theme === 'auto' && systemDark);
 
+  const alerts = useMemo(() => (data ? dueAlerts(data, todayISO()) : []), [data]);
+
   useEffect(() => { ensureDefaults(); }, []);
+  // Mantém atualizada a lista que o service worker consulta com o app fechado.
+  useEffect(() => { if (data) syncDueSchedule(data).catch(() => {}); }, [data]);
+  useEffect(() => { if (notificationPermission() === 'granted') registerBackgroundCheck(); }, []);
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
@@ -62,9 +71,13 @@ export default function App() {
           </button>
         </header>
         {tab === 'calendar' && (
-          <CalendarScreen month={month} setMonth={setMonth} onAdd={(date) => setAdding({ date })}
-            onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />
+          <>
+            <DueBanner alerts={alerts} onOpen={(m) => { setMonth(m); setTab('cards'); }} />
+            <CalendarScreen month={month} setMonth={setMonth} onAdd={(date) => setAdding({ date })}
+              onEdit={(t) => setAdding({ editing: t })} goToBackup={() => setTab('more')} />
+          </>
         )}
+        {tab === 'cards' && <CardsScreen month={month} setMonth={setMonth} />}
         {tab === 'summary' && <SummaryScreen month={month} setMonth={setMonth} />}
         {tab === 'people' && <PeopleScreen month={month} setMonth={setMonth} />}
         {tab === 'history' && <HistoryScreen />}
@@ -77,6 +90,7 @@ export default function App() {
           {TABS.map((t) => (
             <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
               <span className="ico">{t.icon}</span>{t.label}
+              {t.id === 'cards' && alerts.length > 0 && <span className="count">{alerts.length}</span>}
             </button>
           ))}
         </div>

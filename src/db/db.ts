@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type {
-  Card, Category, Dataset, Goal, Installment, Meta, Person, Recurring,
+  Card, CardPayment, Category, Dataset, Goal, Installment, Meta, Person, Receipt, Recurring,
   SalaryChange, Saving, Settlement, Transaction,
 } from './types';
 
@@ -14,6 +14,8 @@ export class FinDB extends Dexie {
   salaries!: EntityTable<SalaryChange, 'id'>;
   settlements!: EntityTable<Settlement, 'id'>;
   savings!: EntityTable<Saving, 'month'>;
+  cardPayments!: EntityTable<CardPayment, 'id'>;
+  receipts!: EntityTable<Receipt, 'id'>;
   goals!: EntityTable<Goal, 'id'>;
   meta!: EntityTable<Meta, 'key'>;
 
@@ -32,6 +34,11 @@ export class FinDB extends Dexie {
       goals: 'id',
       meta: 'key',
     });
+    // Só acrescenta tabelas: nenhum dado existente é tocado.
+    this.version(2).stores({
+      cardPayments: 'id, cardId, month',
+      receipts: 'id, personId, month',
+    });
   }
 }
 
@@ -47,7 +54,7 @@ db.on('versionchange', () => {
 
 export const TABLES = [
   'cards', 'categories', 'people', 'transactions', 'installments',
-  'recurring', 'salaries', 'settlements', 'savings', 'goals',
+  'recurring', 'salaries', 'settlements', 'savings', 'goals', 'cardPayments', 'receipts',
 ] as const satisfies readonly (keyof Dataset)[];
 
 export async function loadDataset(): Promise<Dataset> {

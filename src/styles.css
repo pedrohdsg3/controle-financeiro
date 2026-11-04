@@ -50,8 +50,8 @@ button { cursor: pointer; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface);
   border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
 }
-.tabbar-inner { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
-.tab { background: none; border: 0; padding: 8px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; }
+.tabbar-inner { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); }
+.tab { background: none; border: 0; padding: 8px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 10.5px; }
 .tab .ico { font-size: 20px; line-height: 1; }
 .tab.active { color: var(--accent); font-weight: 600; }
 
@@ -164,3 +164,15 @@ button { cursor: pointer; }
   width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border);
   background: var(--surface); font-size: 18px; display: grid; place-items: center; flex: none;
 }
+
+/* Aba Cartões */
+.badge.state-ok { color: var(--pos); }
+.badge.state-warn { color: var(--warn); font-weight: 600; }
+.badge.state-bad { color: var(--neg); font-weight: 600; }
+.badge.entry { border: 0; margin: 6px 6px 0 0; }
+.link-btn { background: none; border: 0; padding: 4px 0; color: var(--accent); font-size: 13px; flex: none; }
+.person-row { padding: 6px 0; }
+.due-banner { padding: 6px 14px; border-color: var(--warn); }
+.due-banner button { width: 100%; background: none; border: 0; padding: 8px 0; text-align: left; }
+.tab { position: relative; }
+.tab .count { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; border-radius: 8px; background: var(--neg); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; padding: 0 3px; }

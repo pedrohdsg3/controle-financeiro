@@ -11,14 +11,16 @@ export const fmt = (cents: Cents): string => brl.format(cents / 100);
 /** Versão curta para espaços pequenos (ex: célula do calendário): "1.234" */
 export const fmtShort = (cents: Cents): string => brlCompact.format(Math.round(cents / 100));
 
-/** Interpreta texto digitado ("12,50", "1.234,5", "12.5") e devolve centavos. */
+/** Interpreta texto digitado ("12,50", "1.234,5", "12.5", "1.500") e devolve centavos. Negativo é inválido. */
 export function parseMoney(text: string): Cents | null {
   const t = text.trim().replace(/\s|R\$/g, '');
   if (!t) return null;
   let norm = t;
   if (t.includes(',')) norm = t.replace(/\./g, '').replace(',', '.');
+  // "1.500" e "1.234.567" são milhares no Brasil; "12.50" continua sendo decimal.
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) norm = t.replace(/\./g, '');
   const n = Number(norm);
-  return Number.isFinite(n) ? toCents(n) : null;
+  return Number.isFinite(n) && n >= 0 ? toCents(n) : null;
 }
 
 /**

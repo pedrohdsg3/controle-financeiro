@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { deleteSettlement, saveSettlement } from '../db/actions';
 import type { Settlement } from '../db/types';
 import { summarizeMonth, UNASSIGNED, type PersonTotals } from '../engine/engine';
+import { personMonthStatus } from '../engine/bills';
 import { fmt, parseMoney } from '../lib/money';
-import { monthLabel, type Month } from '../lib/months';
+import { monthLabel, todayISO, type Month } from '../lib/months';
 import { MonthPicker, Sheet, useData, useLookups } from './common';
 import { centsToText, LineRow, PersonChips } from './pickers';
 
@@ -111,6 +112,10 @@ export function PeopleScreen({ month, setMonth }: { month: Month; setMonth: (m: 
             {row('⚡ Pix divididos', p.pix)}
             {row('(+) Vai me passar por fora', p.paysMe, 'pos')}
             {row('(−) Eu devo enviar', p.iOwe, 'neg')}
+            {(() => {
+              const st = personMonthStatus(data, month, todayISO(), p.personId);
+              return st.received > 0 ? row('✅ Já me pagou (aba Cartões)', st.received, 'pos') : null;
+            })()}
           </div>
           {settlements.filter((x) => x.personId === p.personId).map((x) => (
             <button key={x.id} className="badge" style={{ marginRight: 6, marginTop: 6, border: 0 }} onClick={() => setForm(x)}>

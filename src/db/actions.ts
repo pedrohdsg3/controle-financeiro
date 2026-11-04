@@ -1,8 +1,8 @@
 import { db, newId } from './db';
 import { defaultCards, defaultCategories, defaultPeople, PALETTE } from './defaults';
-import type { Card, Category, Installment, Person, Recurring, SalaryChange, Settlement, Transaction } from './types';
+import type { Card, CardPayment, Category, Installment, Person, Receipt, Recurring, SalaryChange, Settlement, Transaction } from './types';
 import type { Cents } from '../lib/money';
-import type { Month } from '../lib/months';
+import { currentMonth, type Month } from '../lib/months';
 
 /** Na primeira vez que o app abre, cria cartões, categorias e pessoas padrão. */
 export async function ensureDefaults() {
@@ -96,3 +96,18 @@ export async function setSaving(month: Month, amount: Cents) {
   if (amount) await db.savings.put({ month, amount });
   else await db.savings.delete(month);
 }
+
+/** Define o vencimento. Na primeira vez, o controle começa pela fatura do mês atual. */
+export async function setCardDueDay(card: Card, dueDay: number | undefined) {
+  await db.cards.update(card.id, { dueDay, dueFrom: card.dueFrom ?? currentMonth() });
+}
+
+export async function addCardPayment(p: Omit<CardPayment, 'id' | 'createdAt'>) {
+  await db.cardPayments.add({ ...p, id: newId(), createdAt: Date.now() });
+}
+export const deleteCardPayment = (id: string) => db.cardPayments.delete(id);
+
+export async function addReceipt(r: Omit<Receipt, 'id' | 'createdAt'>) {
+  await db.receipts.add({ ...r, id: newId(), createdAt: Date.now() });
+}
+export const deleteReceipt = (id: string) => db.receipts.delete(id);

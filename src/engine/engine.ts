@@ -279,12 +279,15 @@ export function reserveUntil(data: Dataset, m: Month): Cents {
  * Sugere o mês da fatura de uma compra no cartão:
  * compras ANTES do dia de fechamento caem na fatura do próprio mês;
  * a partir do dia de fechamento, na fatura do mês seguinte.
+ * Se o vencimento cai no mês depois do fechamento (fecha dia 28, vence dia 5), avança mais um mês,
+ * porque "mês da fatura" é o mês em que ela é cobrada.
  */
 export function suggestBillMonth(card: Card | undefined, date: ISODate): Month {
   const m = monthOf(date);
   if (!card?.closingDay) return m;
   const day = Number(date.slice(8, 10));
-  return day >= card.closingDay ? addMonths(m, 1) : m;
+  const closes = day >= card.closingDay ? addMonths(m, 1) : m;
+  return card.dueDay && card.dueDay <= card.closingDay ? addMonths(closes, 1) : closes;
 }
 
 /** Totais por dia (para o calendário), pela data da compra. */

@@ -112,7 +112,7 @@ export function CalendarScreen({ month, setMonth, onAdd, onEdit, goToBackup }: P
               <Avatar icon="🔁" color={category(r.categoryId)?.color} />
               <div className="grow">
                 <div className="ellipsis">{r.description}</div>
-                <div className="small muted">Vence hoje · {r.cardId ? `no ${card(r.cardId)?.name}` : r.payMethod}</div>
+                <div className="small muted">Vence neste dia · {r.cardId ? `no ${card(r.cardId)?.name}` : r.payMethod}</div>
               </div>
               <div className="num muted">{fmt(r.amount)}</div>
             </div>

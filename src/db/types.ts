@@ -10,6 +10,10 @@ export interface Card {
   color: string;
   /** Compras feitas a partir deste dia caem na fatura do mês seguinte. */
   closingDay?: number;
+  /** Dia do vencimento da fatura (a fatura do mês M vence no dia dueDay de M). */
+  dueDay?: number;
+  /** A partir de qual fatura o app controla o vencimento (meses antes disso não geram alerta). */
+  dueFrom?: Month;
   archived?: boolean;
   order: number;
 }
@@ -112,6 +116,29 @@ export interface Settlement {
   createdAt: number;
 }
 
+/** Pagamento que EU fiz de uma fatura (pode ser parcial). Só controle: não muda gastos nem saldo. */
+export interface CardPayment {
+  id: string;
+  cardId: string;
+  month: Month;
+  amount: Cents;
+  date: ISODate;
+  note?: string;
+  createdAt: number;
+}
+
+/** Dinheiro que uma pessoa já me pagou pela parte dela. cardId null = gasto fora do cartão. */
+export interface Receipt {
+  id: string;
+  personId: string;
+  month: Month;
+  cardId: string | null;
+  amount: Cents;
+  date: ISODate;
+  note?: string;
+  createdAt: number;
+}
+
 export interface Saving {
   month: Month;
   amount: Cents;
@@ -140,9 +167,11 @@ export interface Dataset {
   settlements: Settlement[];
   savings: Saving[];
   goals: Goal[];
+  cardPayments: CardPayment[];
+  receipts: Receipt[];
 }
 
 export const emptyDataset = (): Dataset => ({
   cards: [], categories: [], people: [], transactions: [], installments: [],
-  recurring: [], salaries: [], settlements: [], savings: [], goals: [],
+  recurring: [], salaries: [], settlements: [], savings: [], goals: [], cardPayments: [], receipts: [],
 });
