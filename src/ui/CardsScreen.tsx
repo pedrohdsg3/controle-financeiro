@@ -1,4 +1,4 @@
-import { CalendarPlus, Pencil } from 'lucide-react';
+import { CalendarPlus, ClipboardPaste, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { addCardPayment, deleteCardPayment, setCardDetails } from '../db/actions';
 import type { Card, CardFinish } from '../db/types';
@@ -12,6 +12,7 @@ import {
 } from '../lib/notify';
 import { cardFinish, cardProduct, FINISHES } from '../lib/cardStyle';
 import { CardWallet } from './CardWallet';
+import { PasteListSheet } from './PasteList';
 import { Money, MonthPicker, Sheet, useData, useLookups } from './common';
 import { DueStrip } from './Notices';
 import { centsToText, LineRow } from './pickers';
@@ -147,6 +148,7 @@ export function CardsScreen({ month, setMonth, goToPeople, focusCard }: { month:
   const [form, setForm] = useState<PayForm | null>(null);
   const [dueCard, setDueCard] = useState<Card | null>(null);
   const [items, setItems] = useState<Bill | null>(null);
+  const [pasting, setPasting] = useState(false);
 
   // Todos os cartões na carteira: primeiro os que têm fatura no mês.
   const wallet = useMemo(() => {
@@ -195,6 +197,7 @@ export function CardsScreen({ month, setMonth, goToPeople, focusCard }: { month:
           ))}
           <div className="chips" style={{ marginTop: 10 }}>
             {b.remaining > 0 && <button className="btn small" onClick={() => payBill(b)}>Registrar pagamento</button>}
+            <button className="btn small secondary" onClick={() => setPasting(true)}><ClipboardPaste size={14} aria-hidden /> Colar lista</button>
             {b.lines.length > 0 && <button className="btn small secondary" onClick={() => setItems(b)}>Ver itens</button>}
             <button className="btn small secondary" onClick={() => setDueCard(info)}><Pencil size={14} aria-hidden /> Cartão</button>
           </div>
@@ -223,6 +226,7 @@ export function CardsScreen({ month, setMonth, goToPeople, focusCard }: { month:
 
       {form && <PaySheet form={form} onClose={() => setForm(null)} />}
       {dueCard && <DueSheet card={dueCard} onClose={() => setDueCard(null)} />}
+      {pasting && <PasteListSheet cardId={info?.id} month={month} onClose={() => setPasting(false)} />}
       {items && (
         <Sheet title={`${card(items.cardId)?.name} · ${monthLabel(month)}`} onClose={() => setItems(null)}>
           <div className="list">

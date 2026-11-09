@@ -257,7 +257,7 @@ export function MoreScreen({ theme, setTheme, onEditTx }: { theme: Theme; setThe
         {msg && <p className="small" style={{ whiteSpace: 'pre-line' }}>{msg}</p>}
       </Section>
 
-      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.4.1</p>
+      <p className="small muted" style={{ textAlign: 'center' }}>Controle Financeiro · v1.5</p>
     </>
   );
 }
